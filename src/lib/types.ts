@@ -7,6 +7,8 @@
 export type StaffRole = 'server' | 'manager' | 'admin';
 /** 'open' = table occupee (encaissee ou non). 'closed' = table liberee. */
 export type OrderStatus = 'open' | 'paid' | 'cancelled' | 'closed';
+/** 'requested' = commande client a valider. 'sent' = parti en cuisine. */
+export type OrderItemStatus = 'requested' | 'sent';
 
 
 export type StaffRow = {
@@ -135,6 +137,10 @@ export type OrderItemRow = {
   note: string | null;
   created_by: string | null;
   from_guest?: boolean;
+  /** Absent tant que la migration 0008 n'est pas passee : alors la ligne est deja envoyee. */
+  status?: OrderItemStatus;
+  /** Horodatage d'envoi en cuisine. Nul tant que la ligne est demandee. */
+  sent_at?: string | null;
   created_at: string;
 };
 
@@ -156,6 +162,8 @@ export type TableOverviewRow = {
   order_paid_amount_cents: number | null;
   order_remaining_cents: number | null;
   item_count: number;
+  /** Articles client encore a valider. 0 si la migration 0008 n'est pas passee. */
+  requested_count?: number;
 };
 
 /** Payload envoye a pos_submit_order : jamais de prix, uniquement des ids. */
@@ -253,6 +261,17 @@ export type Database = {
         Args: { p_item_id: string };
         Returns: { ok: true; duplicate: boolean; order_id?: string };
       };
+      pos_accept_guest_items: {
+        Args: { p_order_id: string };
+        Returns: {
+          ok: true;
+          duplicate: boolean;
+          order_id: string;
+          order_number: number;
+          batch_id: string;
+          items_accepted: number;
+        };
+      };
       pos_force_release: {
         Args: { p_order_id: string };
         Returns: { ok: true; duplicate: boolean; status: OrderStatus };
@@ -265,6 +284,7 @@ export type Database = {
     Enums: {
       staff_role: StaffRole;
       order_status: OrderStatus;
+      order_item_status: OrderItemStatus;
     };
     CompositeTypes: Record<string, never>;
   };

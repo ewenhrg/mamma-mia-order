@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Sheet } from '@/components/ui/Sheet';
 import { Spinner } from '@/components/ui/Spinner';
 import {
@@ -119,6 +120,13 @@ function TablesTab({
 
   return (
     <div className="space-y-3">
+      <Link
+        href="/admin/tables/qr"
+        className="tap flex h-14 w-full items-center justify-center rounded-2xl bg-brand px-5 font-bold text-white shadow-lg shadow-brand/25 active:bg-brand-dark"
+      >
+        QR codes clients
+      </Link>
+
       <div className="grid grid-cols-2 gap-2">
         <PrimaryButton
           onClick={() => {
@@ -133,66 +141,65 @@ function TablesTab({
           Creer en serie
         </GhostButton>
       </div>
-      <GhostButton type="button" onClick={() => window.open('/admin/tables/qr', '_blank')} className="w-full">
-        Imprimer les QR clients
-      </GhostButton>
 
       {zones.length === 0 ? (
         <EmptyState text="Cree d'abord une zone." />
       ) : tables.length === 0 ? (
         <EmptyState text="Aucune table." />
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
+        <ul className="overflow-hidden rounded-2xl border border-line bg-surface">
           {tables.map((table) => {
             const zone = zoneById.get(table.zone_id);
             return (
-              <li key={table.id} className="flex items-center gap-2 p-3">
-                <span
-                  className="flex size-11 shrink-0 items-center justify-center rounded-xl text-base font-extrabold text-white"
-                  style={{ backgroundColor: zone?.color ?? '#0B0D12' }}
-                >
-                  {table.label}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-bold leading-tight text-ink">
-                    {zone?.name ?? '—'}
-                  </p>
-                  <p className="text-xs text-muted">{table.seats} places</p>
+              <li key={table.id} className="border-b border-line p-3 last:border-b-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="flex size-11 shrink-0 items-center justify-center rounded-xl text-base font-extrabold text-white"
+                    style={{ backgroundColor: zone?.color ?? '#0B0D12' }}
+                  >
+                    {table.label}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[15px] font-bold leading-tight text-ink">
+                      {zone?.name ?? '—'}
+                    </p>
+                    <p className="text-xs text-muted">{table.seats} places</p>
+                  </div>
+                  {busyId === table.id ? <Spinner className="size-5 text-muted" /> : null}
+                  <Toggle
+                    checked={table.active}
+                    onChange={(next) => void setActive(table, next)}
+                    label={`Activer la table ${table.label}`}
+                    disabled={busyId === table.id}
+                  />
                 </div>
 
-                {busyId === table.id ? <Spinner className="size-5 text-muted" /> : null}
-
-                <IconButton
-                  label={`QR client table ${table.label}`}
-                  onClick={() => setQrTable(table)}
-                >
-                  <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z" />
-                </IconButton>
-
-                <IconButton
-                  label={`Modifier la table ${table.label}`}
-                  onClick={() => {
-                    setEditing(table);
-                    setSheetOpen(true);
-                  }}
-                >
-                  <path d="M4 20h4l10-10-4-4L4 16v4z" strokeLinejoin="round" />
-                </IconButton>
-
-                <IconButton
-                  label={`Supprimer la table ${table.label}`}
-                  tone="alert"
-                  onClick={() => void remove(table)}
-                >
-                  <path d="M4 7h16M9 7V5h6v2M6 7l1 12h10l1-12" strokeLinecap="round" strokeLinejoin="round" />
-                </IconButton>
-
-                <Toggle
-                  checked={table.active}
-                  onChange={(next) => void setActive(table, next)}
-                  label={`Activer la table ${table.label}`}
-                  disabled={busyId === table.id}
-                />
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setQrTable(table)}
+                    className="tap flex h-12 items-center justify-center rounded-xl bg-brand-soft text-sm font-bold text-brand"
+                  >
+                    QR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditing(table);
+                      setSheetOpen(true);
+                    }}
+                    className="tap flex h-12 items-center justify-center rounded-xl border border-line text-sm font-semibold text-ink-2"
+                  >
+                    Modifier
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void remove(table)}
+                    className="tap flex h-12 items-center justify-center rounded-xl border border-line text-sm font-semibold text-alert"
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </li>
             );
           })}

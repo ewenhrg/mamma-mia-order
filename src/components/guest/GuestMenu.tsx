@@ -136,8 +136,9 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
         </div>
         <h1 className="mt-5 text-2xl font-extrabold text-ink">C&apos;est parti</h1>
         <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-2">
-          Commande #{sent.orderNumber} envoyée à la cuisine
+          Commande #{sent.orderNumber} transmise au serveur
           {sent.count > 0 ? ` · ${sent.count} article${sent.count > 1 ? 's' : ''}` : ''}.
+          Un serveur va la vérifier avant la cuisine.
         </p>
         <p className="mt-1 text-lg font-extrabold tabular-nums text-brand">
           {formatAmount(sent.totalCents)} EGP
@@ -255,7 +256,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
         open={cartOpen}
         onClose={() => setCartOpen(false)}
         title={`Table ${tableLabel}`}
-        subtitle="Ta commande part à la cuisine"
+        subtitle="Le serveur vérifie ta commande avant la cuisine"
         footer={
           <button
             type="button"
@@ -264,7 +265,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
             className="tap flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-brand text-lg font-extrabold text-white shadow-lg shadow-brand/25 disabled:bg-line disabled:text-muted disabled:shadow-none"
           >
             {submitting ? <Spinner className="size-5" /> : null}
-            {submitting ? 'Envoi…' : `Envoyer · ${formatAmount(total)} EGP`}
+            {submitting ? 'Envoi…' : `Demander · ${formatAmount(total)} EGP`}
           </button>
         }
       >

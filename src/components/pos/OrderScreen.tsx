@@ -45,7 +45,20 @@ type Props = {
 export function OrderScreen({ table, role }: Props) {
   const router = useRouter();
   const { menu, loading: menuLoading, error: menuError, reload } = useMenu();
-  const { order, items: sentItems, refresh: refreshOrder } = useOrder(table.id);
+  const { order, items: orderItems, refresh: refreshOrder } = useOrder(table.id);
+
+  const requestedItems = useMemo(
+    () => orderItems.filter((item) => item.status === 'requested'),
+    [orderItems],
+  );
+  const sentItems = useMemo(
+    () => orderItems.filter((item) => item.status !== 'requested'),
+    [orderItems],
+  );
+  const requestedCount = useMemo(
+    () => requestedItems.reduce((sum, item) => sum + item.quantity, 0),
+    [requestedItems],
+  );
 
   // --- panier, restaure depuis le telephone -------------------------------
   const [cart, dispatch] = useReducer(cartReducer, table.id, (tableId): CartState => {
@@ -95,6 +108,7 @@ export function OrderScreen({ table, role }: Props) {
   const [toast, setToast] = useState<{ kind: 'ok' | 'info'; text: string } | null>(null);
   const submitLock = useRef(false);
   const [submitting, setSubmitting] = useState(false);
+  const [accepting, setAccepting] = useState(false);
 
   const showToast = useCallback((kind: 'ok' | 'info', text: string) => {
     setToast({ kind, text });
@@ -240,11 +254,30 @@ export function OrderScreen({ table, role }: Props) {
   const voidItem = useCallback(
     async (itemId: string) => {
       const { error } = await getSupabaseBrowser().rpc('pos_void_item', { p_item_id: itemId });
-      if (error) showToast('info', 'Annulation impossible');
+      if (error) showToast('info', describeAdminError(error.message));
       else void refreshOrder();
     },
     [refreshOrder, showToast],
   );
+
+  const acceptRequested = useCallback(async () => {
+    if (!order || accepting) return;
+    const count = requestedItems.reduce((sum, item) => sum + item.quantity, 0);
+    if (count === 0) return;
+    if (!window.confirm(`Envoyer ${count} article${count > 1 ? 's' : ''} en cuisine ?`)) return;
+
+    setAccepting(true);
+    const { error } = await getSupabaseBrowser().rpc('pos_accept_guest_items', {
+      p_order_id: order.id,
+    });
+    setAccepting(false);
+    if (error) {
+      showToast('info', describeAdminError(error.message));
+      return;
+    }
+    await refreshOrder();
+    showToast('ok', `${count} article${count > 1 ? 's' : ''} envoye${count > 1 ? 's' : ''} en cuisine`);
+  }, [order, accepting, requestedItems, refreshOrder, showToast]);
 
   /**
    * Encaisser ne libere pas la table : le paiement est enregistre, la
@@ -377,6 +410,22 @@ export function OrderScreen({ table, role }: Props) {
 
       <OutboxBanner />
 
+      {requestedCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => setCartOpen(true)}
+          className="tap sticky top-0 z-20 flex w-full items-center gap-3 bg-brand px-4 py-3 text-left text-white"
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/20 text-sm font-extrabold tabular-nums">
+            {requestedCount}
+          </span>
+          <span className="min-w-0 flex-1 text-sm font-bold">
+            Commande client a verifier
+          </span>
+          <span className="shrink-0 text-sm font-extrabold">Ouvrir</span>
+        </button>
+      ) : null}
+
       {toast ? (
         <div
           role="status"
@@ -441,7 +490,7 @@ export function OrderScreen({ table, role }: Props) {
           type="button"
           onClick={() => setCartOpen(true)}
           className={`tap-strong mb-2.5 flex h-16 w-full items-center gap-3 rounded-2xl px-4 text-left ${
-            draftCount > 0
+            draftCount > 0 || requestedCount > 0
               ? 'bg-brand text-white shadow-lg shadow-brand/25'
               : order
                 ? 'border border-line bg-surface text-ink'
@@ -450,7 +499,7 @@ export function OrderScreen({ table, role }: Props) {
         >
           <span
             className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${
-              draftCount > 0 ? 'bg-white/20' : 'bg-canvas'
+              draftCount > 0 || requestedCount > 0 ? 'bg-white/20' : 'bg-canvas'
             }`}
           >
             <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
@@ -464,22 +513,26 @@ export function OrderScreen({ table, role }: Props) {
             <span className="block truncate text-[15px] font-extrabold leading-tight">
               {draftCount > 0
                 ? `${draftCount} article${draftCount > 1 ? 's' : ''}`
-                : order
-                  ? 'Voir la commande'
-                  : 'Panier vide'}
+                : requestedCount > 0
+                  ? `${requestedCount} demande${requestedCount > 1 ? 's' : ''} client`
+                  : order
+                    ? 'Voir la commande'
+                    : 'Panier vide'}
             </span>
             <span className="block truncate text-xs opacity-80">
               {draftCount > 0
                 ? `${formatAmount(draftTotal)} EGP a envoyer`
-                : order
-                  ? `${formatAmount(order.total_cents)} EGP deja commandes`
-                  : 'Tape un produit pour commencer'}
+                : requestedCount > 0
+                  ? 'A verifier avant la cuisine'
+                  : order
+                    ? `${formatAmount(order.total_cents)} EGP deja commandes`
+                    : 'Tape un produit pour commencer'}
             </span>
           </span>
 
-          {draftCount > 0 || order ? (
+          {draftCount > 0 || requestedCount > 0 || order ? (
             <span className="shrink-0 rounded-xl bg-white/20 px-3 py-2 text-sm font-extrabold">
-              {draftCount > 0 ? 'Voir' : 'Ouvrir'}
+              {draftCount > 0 || requestedCount > 0 ? 'Voir' : 'Ouvrir'}
             </span>
           ) : null}
         </button>
@@ -496,9 +549,12 @@ export function OrderScreen({ table, role }: Props) {
         onEditLine={editLine}
         order={order}
         sentItems={sentItems}
+        requestedItems={requestedItems}
         role={role}
         submitting={submitting}
+        accepting={accepting}
         onSubmit={submit}
+        onAcceptRequested={() => void acceptRequested()}
         onVoidItem={voidItem}
         onMarkPaid={markPaid}
         onReleaseTable={releaseTable}

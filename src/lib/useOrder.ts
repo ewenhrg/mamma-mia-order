@@ -14,7 +14,7 @@ export type OrderState = {
 };
 
 /**
- * Commande ouverte d'une table + ses lignes deja envoyees.
+ * Commande ouverte d'une table + ses lignes (demandees et deja envoyees).
  *
  * Ecoute Realtime pour qu'un serveur voie en direct ce qu'un collegue vient
  * d'ajouter sur la meme table : c'est ce qui evite de commander deux fois

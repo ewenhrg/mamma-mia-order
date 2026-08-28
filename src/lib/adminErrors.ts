@@ -49,6 +49,7 @@ export function describeDbError(error: unknown): string {
     return 'Des articles ont ete ajoutes apres le paiement : encaisse le complement.';
   }
   if (message.includes('ORDER_CLOSED')) return 'Cette commande est deja cloturee.';
+  if (message.includes('ORDER_NOT_FOUND')) return 'Cette commande est introuvable.';
   if (message.includes('STAFF_INACTIVE')) return 'Ton compte n est pas actif. Demande a un admin de t activer.';
 
   // --- Table ou colonne absente du cache de PostgREST ----------------------

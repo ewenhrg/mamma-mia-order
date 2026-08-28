@@ -10,7 +10,7 @@ import type { DraftSummary } from '@/lib/drafts';
 /** Au-dela, la table est signalee : elle occupe la salle depuis longtemps. */
 const LONG_STAY_MINUTES = 90;
 
-export type TableState = 'free' | 'active' | 'long' | 'paid' | 'reopened';
+export type TableState = 'free' | 'active' | 'long' | 'paid' | 'reopened' | 'requested';
 
 const STATE_STYLES: Record<TableState, { card: string; dot: string; label: string; text: string }> = {
   free: {
@@ -38,12 +38,17 @@ const STATE_STYLES: Record<TableState, { card: string; dot: string; label: strin
     label: 'ENCAISSEE',
     text: 'text-free',
   },
-  // Encaissee puis rouverte : des articles ont ete ajoutes apres le paiement.
   reopened: {
     card: 'border-alert/40 bg-alert-soft',
     dot: 'bg-alert',
     label: 'RESTE A PAYER',
     text: 'text-alert',
+  },
+  requested: {
+    card: 'border-brand/40 bg-brand-soft',
+    dot: 'bg-brand',
+    label: 'DEMANDE',
+    text: 'text-brand',
   },
 };
 
@@ -56,6 +61,7 @@ type Props = {
 
 export function tableState(table: TableOverviewRow, now: number): TableState {
   if (table.order_id === null) return 'free';
+  if ((table.requested_count ?? 0) > 0) return 'requested';
 
   const remaining = table.order_remaining_cents ?? 0;
   if (table.order_paid_at) return remaining > 0 ? 'reopened' : 'paid';
@@ -95,7 +101,7 @@ function TableCardBase({ table, draft, now }: Props) {
 
       <div className="mt-2">
         <span className={`block text-[11px] font-bold uppercase tracking-wide ${style.text}`}>
-          {draft ? 'BROUILLON' : style.label}
+          {state === 'requested' ? 'DEMANDE' : draft ? 'BROUILLON' : style.label}
         </span>
 
         {hasOrder ? (
@@ -106,7 +112,10 @@ function TableCardBase({ table, draft, now }: Props) {
                 : formatAmount(table.order_total_cents ?? 0)}
             </span>
             <span className="mt-0.5 block truncate text-[11px] text-muted">
-              {table.item_count} art. · {formatElapsed(table.order_opened_at ?? now, now)}
+              {state === 'requested'
+                ? `${table.requested_count} a valider`
+                : `${table.item_count} art.`}{' '}
+              · {formatElapsed(table.order_opened_at ?? now, now)}
             </span>
           </>
         ) : (
@@ -132,6 +141,7 @@ export const TableCard = memo(TableCardBase, (prev, next) => {
     a.order_paid_at === b.order_paid_at &&
     a.order_remaining_cents === b.order_remaining_cents &&
     a.item_count === b.item_count &&
+    a.requested_count === b.requested_count &&
     a.order_opened_at === b.order_opened_at &&
     prev.draft?.itemCount === next.draft?.itemCount &&
     // L'affichage ne change qu'a la minute : inutile de re-rendre plus souvent.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Sheet } from '@/components/ui/Sheet';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatAmount } from '@/lib/money';
@@ -20,10 +20,13 @@ type Props = {
 
   order: OrderRow | null;
   sentItems: OrderItemRow[];
+  requestedItems: OrderItemRow[];
 
   role: StaffRole;
   submitting: boolean;
+  accepting: boolean;
   onSubmit: () => void;
+  onAcceptRequested: () => void;
   onVoidItem: (itemId: string) => void;
   onMarkPaid: () => void;
   onReleaseTable: () => void;
@@ -39,18 +42,34 @@ export function CartSheet({
   onEditLine,
   order,
   sentItems,
+  requestedItems,
   role,
   submitting,
+  accepting,
   onSubmit,
+  onAcceptRequested,
   onVoidItem,
   onMarkPaid,
   onReleaseTable,
 }: Props) {
-  const [tab, setTab] = useState<'cart' | 'sent'>('cart');
+  const [tab, setTab] = useState<'cart' | 'requested' | 'sent'>('cart');
 
   const draftTotal = useMemo(() => cartTotalCents(lines), [lines]);
   const draftCount = useMemo(() => cartItemCount(lines), [lines]);
   const sentCount = useMemo(() => sentItems.reduce((sum, i) => sum + i.quantity, 0), [sentItems]);
+  const requestedCount = useMemo(
+    () => requestedItems.reduce((sum, i) => sum + i.quantity, 0),
+    [requestedItems],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    if (requestedItems.length > 0) setTab('requested');
+  }, [open, requestedItems.length]);
+
+  useEffect(() => {
+    if (tab === 'requested' && requestedItems.length === 0) setTab('sent');
+  }, [tab, requestedItems.length]);
 
   // Une commande deja ouverte : le serveur doit voir le total reel de la table,
   // pas seulement ce qu'il vient de saisir.
@@ -91,6 +110,20 @@ export function CartSheet({
                   : `Envoyer ${draftCount} article${draftCount > 1 ? 's' : ''}`}
             </button>
           </div>
+        ) : tab === 'requested' ? (
+          <button
+            type="button"
+            disabled={requestedItems.length === 0 || accepting}
+            onClick={onAcceptRequested}
+            className="tap-strong flex h-16 w-full items-center justify-center gap-3 rounded-2xl bg-brand text-lg font-extrabold text-white shadow-lg shadow-brand/25 active:bg-brand-dark disabled:bg-line disabled:text-muted disabled:shadow-none"
+          >
+            {accepting ? <Spinner className="size-5" /> : null}
+            {accepting
+              ? 'Validation…'
+              : requestedCount === 0
+                ? 'Rien a valider'
+                : `Valider et envoyer ${requestedCount} article${requestedCount > 1 ? 's' : ''}`}
+          </button>
         ) : order ? (
           <PaymentActions order={order} onMarkPaid={onMarkPaid} onReleaseTable={onReleaseTable} />
         ) : null
@@ -99,7 +132,16 @@ export function CartSheet({
       {/* ------------------------------------------------------- onglets --- */}
       <div className="sticky top-0 z-10 flex gap-2 border-b border-line bg-surface px-4 py-2.5">
         <TabButton active={tab === 'cart'} onClick={() => setTab('cart')} label="Panier" count={draftCount} />
-        <TabButton active={tab === 'sent'} onClick={() => setTab('sent')} label="Deja envoye" count={sentCount} />
+        {requestedCount > 0 ? (
+          <TabButton
+            active={tab === 'requested'}
+            onClick={() => setTab('requested')}
+            label="Demandee"
+            count={requestedCount}
+            highlight
+          />
+        ) : null}
+        <TabButton active={tab === 'sent'} onClick={() => setTab('sent')} label="Envoye" count={sentCount} />
       </div>
 
       {tab === 'cart' ? (
@@ -213,6 +255,8 @@ export function CartSheet({
             </button>
           ) : null}
         </div>
+      ) : tab === 'requested' ? (
+        <RequestedItems items={requestedItems} onVoidItem={onVoidItem} />
       ) : (
         <SentItems items={sentItems} order={order} role={role} onVoidItem={onVoidItem} />
       )}
@@ -286,6 +330,88 @@ function PaymentActions({
   );
 }
 
+function RequestedItems({
+  items,
+  onVoidItem,
+}: {
+  items: OrderItemRow[];
+  onVoidItem: (itemId: string) => void;
+}) {
+  const batches = useMemo(() => {
+    const map = new Map<string, OrderItemRow[]>();
+    for (const item of items) {
+      const list = map.get(item.batch_id);
+      if (list) list.push(item);
+      else map.set(item.batch_id, [item]);
+    }
+    return [...map.values()].reverse();
+  }, [items]);
+
+  if (items.length === 0) {
+    return (
+      <p className="p-6 py-10 text-center text-sm text-muted">
+        Aucune commande client en attente.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4 p-4">
+      <p className="rounded-2xl bg-brand-soft px-4 py-3 text-sm font-semibold leading-snug text-brand">
+        Le client a demande ces articles. Verifie, retire ce qui ne va pas, puis
+        valide pour envoyer en cuisine.
+      </p>
+
+      {batches.map((batch) => (
+        <section key={batch[0].batch_id}>
+          <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-brand">
+            Demandee il y a {formatElapsed(batch[0].created_at)}
+          </h3>
+          <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-brand/25 bg-surface">
+            {batch.map((item) => (
+              <li key={item.id} className="flex items-start gap-3 p-3">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-sm font-extrabold tabular-nums text-brand">
+                  {item.quantity}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-bold leading-tight text-ink">{item.name_snapshot}</p>
+                  {item.options_snapshot.length > 0 ? (
+                    <p className="mt-0.5 text-xs text-muted">
+                      {item.options_snapshot.map((o) => o.name).join(' · ')}
+                    </p>
+                  ) : null}
+                  {item.note ? (
+                    <p className="mt-1 inline-block rounded-lg bg-busy-soft px-2 py-0.5 text-xs font-semibold text-busy">
+                      {item.note}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="shrink-0 text-[15px] font-bold tabular-nums text-ink">
+                  {formatAmount(item.line_total_cents)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Retirer ${item.quantity} x ${item.name_snapshot} ?`)) {
+                      onVoidItem(item.id);
+                    }
+                  }}
+                  aria-label="Retirer cette ligne"
+                  className="tap -my-1 flex size-9 shrink-0 items-center justify-center rounded-lg text-alert active:bg-alert-soft"
+                >
+                  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 function SentItems({
   items,
   order,
@@ -320,7 +446,7 @@ function SentItems({
       {batches.map((batch) => (
         <section key={batch[0].batch_id}>
           <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">
-            Envoye il y a {formatElapsed(batch[0].created_at)}
+            Envoye il y a {formatElapsed(batch[0].sent_at ?? batch[0].created_at)}
           </h3>
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
             {batch.map((item) => (
@@ -400,18 +526,26 @@ function TabButton({
   onClick,
   label,
   count,
+  highlight,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
   count: number;
+  highlight?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={`tap h-11 flex-1 rounded-xl text-sm font-bold ${
-        active ? 'bg-ink text-white' : 'bg-canvas text-ink-2'
+        active
+          ? highlight
+            ? 'bg-brand text-white'
+            : 'bg-ink text-white'
+          : highlight
+            ? 'bg-brand-soft text-brand'
+            : 'bg-canvas text-ink-2'
       }`}
     >
       {label}

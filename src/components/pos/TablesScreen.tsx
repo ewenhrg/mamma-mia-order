@@ -42,13 +42,15 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
   const stats = useMemo(() => {
     let open = 0;
     let revenue = 0;
+    let requested = 0;
     for (const t of tables) {
       if (t.order_id) {
         open += 1;
         revenue += t.order_total_cents ?? 0;
       }
+      requested += t.requested_count ?? 0;
     }
-    return { open, free: tables.length - open, revenue };
+    return { open, free: tables.length - open, revenue, requested };
   }, [tables]);
 
   return (
@@ -63,6 +65,7 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
             <h1 className="truncate text-base font-bold leading-tight text-ink">Salle</h1>
             <p className="truncate text-xs text-muted">
               {stats.free} libres · {stats.open} en cours · {formatAmount(stats.revenue)} EGP
+              {stats.requested > 0 ? ` · ${stats.requested} a valider` : ''}
             </p>
           </div>
           <span
