@@ -9,7 +9,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { normalize } from '@/lib/menu';
 import { formatAmount } from '@/lib/money';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
-import { describeAdminError } from '@/lib/adminErrors';
+import { describeDbError } from '@/lib/adminErrors';
 import { useAdminMenu } from '@/lib/useAdminMenu';
 import type { CategoryRow, OptionGroupRow, ProductRow } from '@/lib/types';
 
@@ -87,7 +87,7 @@ function ProductsTab({
       .update({ available })
       .eq('id', product.id);
     setBusyId(null);
-    if (error) onError(error.message);
+    if (error) onError(describeDbError(error));
     else reload();
   }
 
@@ -100,7 +100,7 @@ function ProductsTab({
       p_product_id: product.id,
     });
     setBusyId(null);
-    if (error) onError(describeAdminError(error.message));
+    if (error) onError(describeDbError(error));
     else reload();
   }
 
@@ -112,7 +112,7 @@ function ProductsTab({
       .update({ active: !archived })
       .eq('id', product.id);
     setBusyId(null);
-    if (error) onError(error.message);
+    if (error) onError(describeDbError(error));
     else reload();
   }
 
@@ -271,7 +271,7 @@ function CategoriesTab({
       .update({ active })
       .eq('id', category.id);
     setBusyId(null);
-    if (error) onError(error.message);
+    if (error) onError(describeDbError(error));
     else reload();
   }
 
@@ -283,7 +283,7 @@ function CategoriesTab({
       p_category_id: category.id,
     });
     setBusyId(null);
-    if (error) onError(describeAdminError(error.message));
+    if (error) onError(describeDbError(error));
     else reload();
   }
 
@@ -419,7 +419,7 @@ function OptionsTab({
 
     onError(null);
     const { error } = await getSupabaseBrowser().from('option_groups').delete().eq('id', group.id);
-    if (error) onError(error.message);
+    if (error) onError(describeDbError(error));
     else reload();
   }
 

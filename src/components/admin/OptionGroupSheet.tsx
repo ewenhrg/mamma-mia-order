@@ -5,6 +5,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { ErrorNote, Field, GhostButton, PrimaryButton, inputClass } from '@/components/admin/ui';
 import { formatAmount, parseAmountToCents } from '@/lib/money';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { describeDbError } from '@/lib/adminErrors';
 import type { OptionGroupRow, OptionRow } from '@/lib/types';
 
 type Draft = { id: string | null; name: string; price: string; available: boolean };
@@ -138,7 +139,7 @@ export function OptionGroupSheet({
       onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Enregistrement impossible');
+      setError(describeDbError(err));
     } finally {
       setPending(false);
     }

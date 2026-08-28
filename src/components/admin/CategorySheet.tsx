@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Sheet } from '@/components/ui/Sheet';
 import { ErrorNote, Field, PrimaryButton, inputClass } from '@/components/admin/ui';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { describeDbError } from '@/lib/adminErrors';
 import type { CategoryRow } from '@/lib/types';
 
 const PRESET_COLORS = [
@@ -60,7 +61,7 @@ export function CategorySheet({ open, onClose, onSaved, category, nextSortOrder 
       onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Enregistrement impossible');
+      setError(describeDbError(err));
     } finally {
       setPending(false);
     }

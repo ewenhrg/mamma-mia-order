@@ -13,7 +13,7 @@ import {
   inputClass,
 } from '@/components/admin/ui';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
-import { describeAdminError } from '@/lib/adminErrors';
+import { describeDbError } from '@/lib/adminErrors';
 import type { RestaurantTableRow, ZoneRow } from '@/lib/types';
 
 const ZONE_COLORS = ['#C8102E', '#EA580C', '#F59E0B', '#16A34A', '#0891B2', '#2563EB', '#7C3AED', '#0B0D12'];
@@ -35,7 +35,7 @@ export function TablesAdmin() {
       supabase.from('zones').select('*').order('sort_order'),
     ]);
     if (tablesRes.error || zonesRes.error) {
-      setError((tablesRes.error ?? zonesRes.error)!.message);
+      setError(describeDbError(tablesRes.error ?? zonesRes.error));
     } else {
       setTables(tablesRes.data ?? []);
       setZones(zonesRes.data ?? []);
@@ -101,7 +101,7 @@ function TablesTab({
       .update({ active })
       .eq('id', table.id);
     setBusyId(null);
-    if (error) onError(error.message);
+    if (error) onError(describeDbError(error));
     else reload();
   }
 
@@ -111,7 +111,7 @@ function TablesTab({
     onError(null);
     const { error } = await getSupabaseBrowser().rpc('pos_delete_table', { p_table_id: table.id });
     setBusyId(null);
-    if (error) onError(describeAdminError(error.message));
+    if (error) onError(describeDbError(error));
     else reload();
   }
 
@@ -275,9 +275,10 @@ function TableSheet({
             active: true,
           });
       if (saveError) {
-        // label est unique : message clair plutot que l'erreur Postgres brute.
         throw new Error(
-          saveError.code === '23505' ? `La table « ${trimmed} » existe deja.` : saveError.message,
+          saveError.code === '23505'
+            ? `La table « ${trimmed} » existe deja.`
+            : describeDbError(saveError),
         );
       }
       onSaved();
@@ -397,7 +398,7 @@ function BulkSheet({
       );
     setPending(false);
 
-    if (insertError) setError(insertError.message);
+    if (insertError) setError(describeDbError(insertError));
     else {
       onSaved();
       onClose();
@@ -526,7 +527,7 @@ function ZonesTab({
     onError(null);
     const { error } = await getSupabaseBrowser().rpc('pos_delete_zone', { p_zone_id: zone.id });
     setBusyId(null);
-    if (error) onError(describeAdminError(error.message));
+    if (error) onError(describeDbError(error));
     else reload();
   }
 
@@ -641,7 +642,9 @@ function ZoneSheet({
 
     if (saveError) {
       setError(
-        saveError.code === '23505' ? `La zone « ${trimmed} » existe deja.` : saveError.message,
+        saveError.code === '23505'
+          ? `La zone « ${trimmed} » existe deja.`
+          : describeDbError(saveError),
       );
       return;
     }

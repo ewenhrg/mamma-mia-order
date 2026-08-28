@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { describeDbError } from '@/lib/adminErrors';
 import type { TableOverviewRow } from '@/lib/types';
 
 /**
@@ -33,7 +34,7 @@ export function useTables() {
 
       if (!mounted.current) return;
       if (queryError) {
-        setError(queryError.message);
+        setError(describeDbError(queryError));
       } else {
         setTables(data ?? []);
         setError(null);

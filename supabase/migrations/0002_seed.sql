@@ -2,7 +2,7 @@
 -- MAMMA MIA — POS : donnees de demarrage
 -- A executer APRES 0001_init.sql.
 -- Rejouable : n'ecrase et ne supprime aucune donnee existante.
--- Le vrai menu sera saisi depuis /admin (ou en remplacant ce fichier).
+-- Le menu de demonstration est remplace par 0006_menu_reel.sql.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------

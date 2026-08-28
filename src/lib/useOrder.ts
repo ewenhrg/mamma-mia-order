@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { describeDbError } from '@/lib/adminErrors';
 import type { OrderItemRow, OrderRow } from '@/lib/types';
 
 export type OrderState = {
@@ -44,7 +45,7 @@ export function useOrder(tableId: string): OrderState {
 
       if (!mounted.current) return;
       if (orderError) {
-        setError(orderError.message);
+        setError(describeDbError(orderError));
         return;
       }
 
@@ -64,7 +65,7 @@ export function useOrder(tableId: string): OrderState {
         .order('created_at');
 
       if (!mounted.current) return;
-      if (itemsError) setError(itemsError.message);
+      if (itemsError) setError(describeDbError(itemsError));
       else {
         setItems(itemRows ?? []);
         setError(null);

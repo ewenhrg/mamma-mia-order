@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorNote, Toggle } from '@/components/admin/ui';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { describeDbError } from '@/lib/adminErrors';
 import type { StaffRole, StaffRow } from '@/lib/types';
 
 const ROLES: { value: StaffRole; label: string; hint: string }[] = [
@@ -24,7 +25,7 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
       .from('staff')
       .select('*')
       .order('created_at');
-    if (queryError) setError(queryError.message);
+    if (queryError) setError(describeDbError(queryError));
     else setStaff(data ?? []);
     setLoading(false);
   }, []);
@@ -41,7 +42,7 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
       .update(patch)
       .eq('id', member.id);
     setBusyId(null);
-    if (updateError) setError(updateError.message);
+    if (updateError) setError(describeDbError(updateError));
     else void reload();
   }
 

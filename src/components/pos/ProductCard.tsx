@@ -9,7 +9,7 @@ type Props = {
   /** Quantite deja au panier, toutes variantes confondues. */
   quantity: number;
   onTap: (product: MenuProduct) => void;
-  /** Appui long : ouvre les options meme si le produit peut etre ajoute direct. */
+  /** Appui long : ouvre la note cuisine avant d'ajouter. */
   onLongPress: (product: MenuProduct) => void;
 };
 
@@ -22,8 +22,8 @@ function ProductCardBase({ product, quantity, onTap, onLongPress }: Props) {
       disabled={disabled}
       onClick={() => onTap(product)}
       onContextMenu={(event) => {
-        // Appui long sur mobile = menu contextuel : on le detourne
-        // pour ouvrir les options sans ajouter de bouton a l'ecran.
+        // Appui long sur mobile = menu contextuel : on l'utilise
+        // pour ouvrir la note cuisine sans ajouter de bouton a l'ecran.
         event.preventDefault();
         if (!disabled) onLongPress(product);
       }}
@@ -49,8 +49,6 @@ function ProductCardBase({ product, quantity, onTap, onLongPress }: Props) {
         </span>
         {disabled ? (
           <span className="text-[10px] font-bold uppercase tracking-wide text-alert">Epuise</span>
-        ) : product.hasOptions ? (
-          <span className="text-[10px] font-bold uppercase tracking-wide text-muted">Options</span>
         ) : (
           <span className="flex size-6 items-center justify-center rounded-full bg-brand/10 text-brand">
             <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="3">

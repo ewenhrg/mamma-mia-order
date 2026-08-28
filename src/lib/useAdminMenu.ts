@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { describeDbError } from '@/lib/adminErrors';
 import type {
   CategoryRow,
   OptionGroupRow,
@@ -54,7 +55,7 @@ export function useAdminMenu() {
         links: links.data ?? [],
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Chargement impossible');
+      setError(describeDbError(err));
     } finally {
       setLoading(false);
     }

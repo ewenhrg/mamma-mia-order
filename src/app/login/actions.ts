@@ -6,7 +6,7 @@ import { findRosterEntry, rosterEmail } from '@/lib/roster';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import type { Database } from '@/lib/types';
 
-export type SignInState = { error: string | null };
+export type SignInState = { error: null | string };
 
 /**
  * Connexion par prenom, sans mot de passe cote serveur.
@@ -29,7 +29,7 @@ export async function signInAs(_prev: SignInState, formData: FormData): Promise<
   if (!url || !serviceKey) {
     return {
       error:
-        "Configuration incomplete : ajoute SUPABASE_SERVICE_ROLE_KEY dans .env.local (Supabase > Project Settings > API).",
+        'Configuration incomplete : ajoute SUPABASE_SERVICE_ROLE_KEY dans .env.local (Supabase > Project Settings > API), puis relance le serveur.',
     };
   }
 
@@ -40,37 +40,34 @@ export async function signInAs(_prev: SignInState, formData: FormData): Promise<
   const email = rosterEmail(entry.slug);
 
   // 1. Compte technique : cree a la premiere connexion, sinon reutilise.
+  //    On ignore volontairement l'erreur "deja inscrit" : c'est le cas normal.
   const created = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
     user_metadata: { full_name: entry.name },
   });
-
-  const alreadyExists =
-    created.error !== null && /already|exists|registered/i.test(created.error.message);
-  if (created.error && !alreadyExists) {
+  if (created.error && !/already|exists|registered/i.test(created.error.message)) {
     return { error: `Connexion impossible : ${created.error.message}` };
   }
 
-  // Le role n'est pose qu'a la creation : si un admin l'a change ensuite
-  // dans Admin > Equipe, ce choix doit primer sur ce fichier.
-  if (created.data?.user) {
-    const { error: staffError } = await admin
-      .from('staff')
-      .upsert(
-        { id: created.data.user.id, full_name: entry.name, role: entry.role, active: true },
-        { onConflict: 'id' },
-      );
-    if (staffError) return { error: `Compte incomplet : ${staffError.message}` };
-  }
-
-  // 2. Jeton a usage unique, echange immediatement contre une session.
+  // 2. Jeton a usage unique. Sa reponse porte aussi l'utilisateur, ce qui
+  //    donne son identifiant meme quand le compte existait deja.
   const link = await admin.auth.admin.generateLink({ type: 'magiclink', email });
   const tokenHash = link.data?.properties?.hashed_token;
-  if (link.error || !tokenHash) {
+  const userId = link.data?.user?.id ?? created.data?.user?.id;
+
+  if (link.error || !tokenHash || !userId) {
     return { error: `Connexion impossible : ${link.error?.message ?? 'jeton indisponible'}` };
   }
 
+  // 3. Provisionnement, rejoue tant qu'il n'a pas abouti.
+  //    Le trigger cree la fiche staff inactive ; c'est ici qu'elle prend son
+  //    role et son activation. Une fois provisionnee, on n'y touche plus :
+  //    les changements faits dans Admin > Equipe font foi.
+  const provisioning = await ensureStaff(admin, userId, entry.name, entry.role);
+  if (provisioning) return { error: provisioning };
+
+  // 4. Echange du jeton contre une session (pose les cookies).
   const supabase = await getSupabaseServer();
   const { error: sessionError } = await supabase.auth.verifyOtp({
     type: 'email',
@@ -80,4 +77,48 @@ export async function signInAs(_prev: SignInState, formData: FormData): Promise<
 
   // redirect() leve une exception de controle : il doit rester hors du try.
   redirect(next);
+}
+
+type AdminClient = ReturnType<typeof createClient<Database>>;
+
+/** Renvoie un message d'erreur, ou null si tout va bien. */
+async function ensureStaff(
+  admin: AdminClient,
+  userId: string,
+  fullName: string,
+  role: 'server' | 'manager' | 'admin',
+): Promise<string | null> {
+  const { data: existing, error: readError } = await admin
+    .from('staff')
+    .select('active, provisioned_at')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (readError) {
+    if (readError.code === '42703') {
+      return "La migration 0005_provisionnement.sql n'a pas ete executee. Colle-la dans Supabase > SQL Editor, puis reessaie.";
+    }
+    return `Compte incomplet : ${readError.message}`;
+  }
+
+  // Deja etabli : on respecte ce qui a ete decide dans Admin > Equipe.
+  if (existing?.provisioned_at) {
+    return existing.active
+      ? null
+      : "Ton compte a ete desactive par un administrateur. Demande-lui de te reactiver dans Admin > Equipe.";
+  }
+
+  const { error: writeError } = await admin.from('staff').upsert(
+    {
+      id: userId,
+      full_name: fullName,
+      role,
+      active: true,
+      provisioned_at: new Date().toISOString(),
+    },
+    { onConflict: 'id' },
+  );
+
+  if (writeError) return `Compte incomplet : ${writeError.message}`;
+  return null;
 }

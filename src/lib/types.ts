@@ -14,6 +14,9 @@ export type StaffRow = {
   full_name: string;
   role: StaffRole;
   active: boolean;
+  /** Nul tant que la premiere connexion n a pas abouti : le provisionnement
+      est alors rejoue, ce qui evite qu un compte reste bloque. */
+  provisioned_at: string | null;
   created_at: string;
   updated_at: string;
 };

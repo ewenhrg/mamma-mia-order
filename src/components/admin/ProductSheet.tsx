@@ -5,6 +5,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Field, PrimaryButton, ErrorNote, inputClass } from '@/components/admin/ui';
 import { formatAmount, parseAmountToCents } from '@/lib/money';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { describeDbError } from '@/lib/adminErrors';
 import type { AdminMenuData } from '@/lib/useAdminMenu';
 import type { ProductRow } from '@/lib/types';
 
@@ -130,7 +131,7 @@ export function ProductSheet({ open, onClose, onSaved, data, product, defaultCat
       onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Enregistrement impossible');
+      setError(describeDbError(err));
     } finally {
       setPending(false);
     }

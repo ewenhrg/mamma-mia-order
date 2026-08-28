@@ -168,7 +168,7 @@ export function CartSheet({
                       onClick={() => onEditLine(line)}
                       className="tap h-12 flex-1 rounded-xl border border-line text-sm font-semibold text-ink-2 active:bg-canvas"
                     >
-                      Modifier
+                      Note
                     </button>
 
                     <button

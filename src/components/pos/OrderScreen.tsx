@@ -155,20 +155,13 @@ export function OrderScreen({ table, role }: Props) {
   // --- actions -------------------------------------------------------------
   const addProduct = useCallback(
     (product: MenuProduct) => {
-      // Sans option : un seul tap suffit, c'est le geste le plus frequent.
-      if (!product.hasOptions) {
-        dispatch({ type: 'add', line: makeLine(product, [], null, 1) });
-        setRecentIds(pushRecentProduct(product.id));
-        return;
-      }
-      setEditing(null);
-      setOptionsFor(product);
+      dispatch({ type: 'add', line: makeLine(product, [], null, 1) });
+      setRecentIds(pushRecentProduct(product.id));
     },
     [],
   );
 
   const openOptions = useCallback((product: MenuProduct) => {
-    if (!product.hasOptions) return;
     setEditing(null);
     setOptionsFor(product);
   }, []);
@@ -178,9 +171,9 @@ export function OrderScreen({ table, role }: Props) {
       const product = optionsFor;
       if (!product) return;
 
-      const line = makeLine(product, draft.optionIds, draft.note || null, draft.quantity);
+      const line = makeLine(product, [], draft.note || null, draft.quantity);
       if (editing) {
-        // Modifier = remplacer : la cle de ligne depend des options et de la note.
+        // Modifier = remplacer : la cle de ligne depend de la note.
         dispatch({ type: 'remove', key: editing.line.key });
       }
       dispatch({ type: 'add', line });
