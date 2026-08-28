@@ -1,0 +1,197 @@
+@import 'tailwindcss';
+
+/* ===========================================================================
+   Mamma Mia POS — design tokens
+   Palette claire a fort contraste : les serveurs travaillent aussi en
+   terrasse et sur la plage, en plein soleil. Un theme sombre y serait
+   illisible.
+   =========================================================================== */
+@theme {
+  --color-brand: #c8102e;
+  --color-brand-dark: #9d0c24;
+  --color-brand-soft: #fdecee;
+
+  --color-ink: #0b0d12;
+  --color-ink-2: #3f4654;
+  --color-muted: #737b8c;
+  --color-line: #e4e7ee;
+  --color-surface: #ffffff;
+  --color-canvas: #f3f4f8;
+
+  --color-free: #0f9d5c;
+  --color-free-soft: #e6f6ee;
+  --color-busy: #d97706;
+  --color-busy-soft: #fdf3e3;
+  --color-alert: #dc2626;
+  --color-alert-soft: #fdecec;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+
+  --radius-xl2: 1.25rem;
+
+  /* Cible tactile minimale (recommandation Apple/Material : 44-48px). */
+  --spacing-touch: 3.25rem;
+}
+
+/* ===========================================================================
+   Base
+   =========================================================================== */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  /* Supprime le delai de 300 ms et le zoom au double-tap : indispensable
+     quand on tape 10 produits d'affilee. */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  /* Empeche le pull-to-refresh qui recharge la page en pleine commande. */
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* iOS zoome sur tout champ dont la police est < 16px. */
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  font-size: max(16px, 1em);
+}
+
+button {
+  touch-action: manipulation;
+  user-select: none;
+}
+
+/* ===========================================================================
+   Utilitaires
+   =========================================================================== */
+
+/* Onglets de categories : defilement horizontal sans barre visible. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.snap-x-tabs {
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.snap-x-tabs > * {
+  scroll-snap-align: start;
+}
+
+/* Encoche iPhone et barre gestuelle Android. */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Retour tactile : reaction immediate au doigt, sans animation d'entree. */
+.tap {
+  transition:
+    transform 90ms ease-out,
+    background-color 90ms ease-out,
+    box-shadow 90ms ease-out;
+}
+.tap:active {
+  transform: scale(0.97);
+}
+
+.tap-strong:active {
+  transform: scale(0.985);
+}
+
+/* Feedback d'ajout au panier : 220 ms, pas plus. */
+@keyframes pop-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-pop {
+  animation: pop-in 220ms ease-out;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.animate-sheet {
+  animation: sheet-up 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade {
+  animation: fade-in 140ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-toast {
+  animation: toast-in 160ms ease-out;
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 900ms linear infinite;
+}
+
+/* Respect des preferences systeme : aucune animation si l'utilisateur
+   les a desactivees (et rendu plus rapide sur telephone modeste). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
