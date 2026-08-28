@@ -25,6 +25,20 @@ export function normalize(value: string): string {
 const EMPTY_MENU: Menu = { categories: [], products: [] };
 
 /**
+ * Menu public pour le parcours client : pas d'options, produits disponibles seulement.
+ */
+export async function fetchGuestMenu(): Promise<Menu> {
+  const supabase = getSupabaseBrowser();
+  const [categoriesRes, productsRes] = await Promise.all([
+    supabase.from('categories').select('*').eq('active', true).order('sort_order'),
+    supabase.from('products').select('*').eq('active', true).eq('available', true).order('sort_order'),
+  ]);
+  const failure = categoriesRes.error ?? productsRes.error;
+  if (failure) throw failure;
+  return buildMenu(categoriesRes.data ?? [], productsRes.data ?? [], [], [], []);
+}
+
+/**
  * Une seule salve de requetes, puis denormalisation cote client.
  * Le menu bouge rarement : le charger d'un bloc evite tout N+1 pendant
  * le service, ou chaque aller-retour reseau coute au serveur.

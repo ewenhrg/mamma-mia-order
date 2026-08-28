@@ -89,6 +89,8 @@ export type RestaurantTableRow = {
   seats: number;
   sort_order: number;
   active: boolean;
+  /** Secret du QR client. Nul tant que la migration 0007 n'est pas passee. */
+  guest_token: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -132,6 +134,7 @@ export type OrderItemRow = {
   line_total_cents: number;
   note: string | null;
   created_by: string | null;
+  from_guest?: boolean;
   created_at: string;
 };
 
@@ -204,6 +207,19 @@ export type Database = {
         Args: {
           p_client_request_id: string;
           p_table_id: string;
+          p_items: SubmitItemPayload[];
+          p_order_note?: string | null;
+        };
+        Returns: SubmitOrderResult;
+      };
+      guest_resolve_table: {
+        Args: { p_token: string };
+        Returns: { id: string; label: string }[];
+      };
+      guest_submit_order: {
+        Args: {
+          p_table_token: string;
+          p_client_request_id: string;
           p_items: SubmitItemPayload[];
           p_order_note?: string | null;
         };

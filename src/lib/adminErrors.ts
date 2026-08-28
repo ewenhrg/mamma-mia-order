@@ -37,7 +37,9 @@ export function describeDbError(error: unknown): string {
   if (message.includes('ZONE_HAS_TABLES')) {
     return `Cette zone contient encore ${count ?? 'des'} table(s). Deplace-les dans une autre zone d'abord.`;
   }
-  if (message.includes('LAST_ZONE')) return 'Il doit rester au moins une zone.';
+  if (message.includes('TABLE_NOT_FOUND')) {
+    return "Cette table n'est plus disponible. Scanne a nouveau le QR, ou demande un serveur.";
+  }
   if (message.includes('MANAGER_REQUIRED')) return 'Reserve aux managers et administrateurs.';
   if (message.includes('DISCOUNT_FORBIDDEN')) return 'Seul un manager peut accorder une remise.';
   if (message.includes('ORDER_NOT_PAID')) {

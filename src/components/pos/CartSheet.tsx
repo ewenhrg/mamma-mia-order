@@ -335,6 +335,11 @@ function SentItems({
                       {item.options_snapshot.map((o) => o.name).join(' · ')}
                     </p>
                   ) : null}
+                  {item.from_guest ? (
+                    <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-brand">
+                      Client
+                    </p>
+                  ) : null}
                   {item.note ? (
                     <p className="mt-1 inline-block rounded-lg bg-busy-soft px-2 py-0.5 text-xs font-semibold text-busy">
                       {item.note}

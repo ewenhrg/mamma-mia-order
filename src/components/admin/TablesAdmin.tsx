@@ -14,6 +14,7 @@ import {
 } from '@/components/admin/ui';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeDbError } from '@/lib/adminErrors';
+import { guestOrderUrl, guestQrImageUrl } from '@/lib/guest';
 import type { RestaurantTableRow, ZoneRow } from '@/lib/types';
 
 const ZONE_COLORS = ['#C8102E', '#EA580C', '#F59E0B', '#16A34A', '#0891B2', '#2563EB', '#7C3AED', '#0B0D12'];
@@ -83,6 +84,7 @@ function TablesTab({
 }) {
   const [editing, setEditing] = useState<RestaurantTableRow | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [qrTable, setQrTable] = useState<RestaurantTableRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -131,6 +133,9 @@ function TablesTab({
           Creer en serie
         </GhostButton>
       </div>
+      <GhostButton type="button" onClick={() => window.open('/admin/tables/qr', '_blank')} className="w-full">
+        Imprimer les QR clients
+      </GhostButton>
 
       {zones.length === 0 ? (
         <EmptyState text="Cree d'abord une zone." />
@@ -156,6 +161,13 @@ function TablesTab({
                 </div>
 
                 {busyId === table.id ? <Spinner className="size-5 text-muted" /> : null}
+
+                <IconButton
+                  label={`QR client table ${table.label}`}
+                  onClick={() => setQrTable(table)}
+                >
+                  <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z" />
+                </IconButton>
 
                 <IconButton
                   label={`Modifier la table ${table.label}`}
@@ -209,6 +221,8 @@ function TablesTab({
         existingLabels={existingLabels}
         nextSortOrder={nextSortOrder}
       />
+
+      <QrSheet table={qrTable} onClose={() => setQrTable(null)} />
     </div>
   );
 }
@@ -694,6 +708,58 @@ function ZoneSheet({
 }
 
 // ------------------------------------------------------------------ petits --
+function QrSheet({ table, onClose }: { table: RestaurantTableRow | null; onClose: () => void }) {
+  if (!table) return null;
+
+  const token = table.guest_token;
+  const url = token ? guestOrderUrl(token) : '';
+  const qr = token ? guestQrImageUrl(url, 320) : '';
+
+  async function copyLink() {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt('Copie ce lien :', url);
+    }
+  }
+
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title={`QR · Table ${table.label}`}
+      subtitle="Le client scanne et commande tout seul"
+      footer={
+        token ? (
+          <div className="grid grid-cols-2 gap-2">
+            <GhostButton type="button" onClick={() => void copyLink()}>
+              Copier le lien
+            </GhostButton>
+            <PrimaryButton type="button" onClick={() => window.print()}>
+              Imprimer
+            </PrimaryButton>
+          </div>
+        ) : null
+      }
+    >
+      <div className="space-y-4 p-4 text-center">
+        {token ? (
+          <>
+            <img src={qr} alt={`QR table ${table.label}`} className="mx-auto size-56 rounded-2xl bg-white p-2" />
+            <p className="break-all text-xs text-muted">{url}</p>
+          </>
+        ) : (
+          <p className="text-sm leading-relaxed text-ink-2">
+            Execute d&apos;abord <span className="font-bold">0007_commande_client.sql</span> dans
+            Supabase &rsaquo; SQL Editor, puis recharge cette page.
+          </p>
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
 function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button
