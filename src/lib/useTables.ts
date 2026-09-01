@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeDbError } from '@/lib/adminErrors';
+import { sortFloorTables } from '@/lib/tableSort';
 import type { TableOverviewRow } from '@/lib/types';
 
 /**
@@ -36,7 +37,7 @@ export function useTables() {
       if (queryError) {
         setError(describeDbError(queryError));
       } else {
-        setTables(data ?? []);
+        setTables(sortFloorTables(data ?? []));
         setError(null);
       }
     } catch (err) {

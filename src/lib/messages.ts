@@ -170,6 +170,10 @@ const fr = {
   'note.n8': 'A part',
   'note.n9': 'Allergie',
   'note.n10': 'Pour enfant',
+  'opt.exact': '{n} au choix',
+  'opt.one': 'Choix unique',
+  'opt.atLeast': 'Au moins {n}',
+  'opt.need': 'Choisis {n}',
 
   'sheet.close': 'Fermer',
 
@@ -458,6 +462,10 @@ const en: Record<MessageKey, string> = {
   'note.n8': 'On the side',
   'note.n9': 'Allergy',
   'note.n10': 'For a child',
+  'opt.exact': 'Choose {n}',
+  'opt.one': 'Pick one',
+  'opt.atLeast': 'At least {n}',
+  'opt.need': 'Choose {n}',
 
   'sheet.close': 'Close',
 
@@ -743,6 +751,10 @@ const ar: Record<MessageKey, string> = {
   'note.n8': 'على جنب',
   'note.n9': 'حساسية',
   'note.n10': 'للأطفال',
+  'opt.exact': 'اختر {n}',
+  'opt.one': 'اختيار واحد',
+  'opt.atLeast': 'على الأقل {n}',
+  'opt.need': 'اختر {n}',
 
   'sheet.close': 'إغلاق',
 

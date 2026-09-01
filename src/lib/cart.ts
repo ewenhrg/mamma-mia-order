@@ -31,6 +31,25 @@ export function lineKey(productId: string, optionIds: string[], note: string | n
   return `${productId}|${opts}|${note ?? ''}`;
 }
 
+/** True si chaque groupe a le bon nombre de choix (ex. mix = exactement 2). */
+export function optionsSatisfyGroups(product: MenuProduct, optionIds: string[]): boolean {
+  for (const group of product.optionGroups) {
+    const count = group.options.filter((o) => optionIds.includes(o.id)).length;
+    if (count < group.minSelect) return false;
+    if (group.maxSelect > 0 && count > group.maxSelect) return false;
+  }
+  return true;
+}
+
+export function missingRequiredOptions(product: MenuProduct, optionIds: string[]): number {
+  let missing = 0;
+  for (const group of product.optionGroups) {
+    const count = group.options.filter((o) => optionIds.includes(o.id)).length;
+    missing += Math.max(0, group.minSelect - count);
+  }
+  return missing;
+}
+
 export function makeLine(
   product: MenuProduct,
   optionIds: string[],

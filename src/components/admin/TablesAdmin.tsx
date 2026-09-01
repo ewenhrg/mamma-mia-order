@@ -17,6 +17,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeDbError } from '@/lib/adminErrors';
 import { guestOrderUrl, guestQrImageUrl } from '@/lib/guest';
 import { useI18n } from '@/lib/i18n';
+import { compareTableLabels, formatTableLabel } from '@/lib/tableSort';
 import type { RestaurantTableRow, ZoneRow } from '@/lib/types';
 
 const ZONE_COLORS = ['#C8102E', '#EA580C', '#F59E0B', '#16A34A', '#0891B2', '#2563EB', '#7C3AED', '#0B0D12'];
@@ -98,6 +99,16 @@ function TablesTab({
   );
   const existingLabels = useMemo(() => new Set(tables.map((t) => t.label)), [tables]);
   const zoneById = useMemo(() => new Map(zones.map((z) => [z.id, z])), [zones]);
+  const orderedTables = useMemo(
+    () =>
+      [...tables].sort((a, b) => {
+        const za = zoneById.get(a.zone_id)?.sort_order ?? 0;
+        const zb = zoneById.get(b.zone_id)?.sort_order ?? 0;
+        if (za !== zb) return za - zb;
+        return compareTableLabels(a.label, b.label);
+      }),
+    [tables, zoneById],
+  );
 
   async function setActive(table: RestaurantTableRow, active: boolean) {
     setBusyId(table.id);
@@ -151,7 +162,7 @@ function TablesTab({
         <EmptyState text={t('admin.noTable')} />
       ) : (
         <ul className="overflow-hidden rounded-2xl border border-line bg-surface">
-          {tables.map((table) => {
+          {orderedTables.map((table) => {
             const zone = zoneById.get(table.zone_id);
             return (
               <li key={table.id} className="border-b border-line p-3 last:border-b-0">
@@ -385,7 +396,7 @@ function BulkSheet({
     if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return [];
     const labels: string[] = [];
     for (let i = start; i <= Math.min(end, start + 199); i += 1) {
-      labels.push(`${prefix.trim()}${prefix.trim() ? ' ' : ''}${i}`);
+      labels.push(formatTableLabel(prefix, i));
     }
     return labels;
   }, [prefix, from, to]);
@@ -446,7 +457,7 @@ function BulkSheet({
       <div className="space-y-4 p-4">
         <ErrorNote message={error} />
 
-        <Field label="Prefixe" hint="Laisse vide pour 1, 2, 3… ou mets « B » pour B 1, B 2…">
+        <Field label="Prefixe" hint="Laisse vide pour 1, 2, 3… ou mets « BAR » pour BAR-1, BAR-2…">
           <input value={prefix} onChange={(e) => setPrefix(e.target.value)} className={inputClass} />
         </Field>
 

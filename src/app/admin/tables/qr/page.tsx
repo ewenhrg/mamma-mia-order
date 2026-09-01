@@ -4,6 +4,7 @@ import { getStaffSession, getSupabaseServer } from '@/lib/supabase/server';
 import { guestOrderUrl, guestQrImageUrl } from '@/lib/guest';
 import { PrintButton } from '@/components/admin/PrintButton';
 import { QrStaffCopy } from '@/components/admin/QrStaffCopy';
+import { sortByTableLabel } from '@/lib/tableSort';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'QR clients — Tables' };
@@ -25,7 +26,7 @@ export default async function PrintQrPage() {
     .eq('active', true)
     .order('sort_order');
 
-  const printable = (tables ?? []).filter((t) => Boolean(t.guest_token));
+  const printable = sortByTableLabel((tables ?? []).filter((t) => Boolean(t.guest_token)));
 
   return (
     <div className="bg-white text-ink">

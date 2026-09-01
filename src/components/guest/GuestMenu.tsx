@@ -115,6 +115,11 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
   }, [cart.lines]);
 
   const addProduct = useCallback((product: MenuProduct) => {
+    if (product.hasOptions) {
+      setEditing(null);
+      setNoteProduct(product);
+      return;
+    }
     dispatch({ type: 'add', line: makeLine(product, [], null, 1) });
   }, []);
 
@@ -122,7 +127,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
     (draft: OptionsDraft) => {
       const product = noteProduct;
       if (!product) return;
-      const line = makeLine(product, [], draft.note || null, draft.quantity);
+      const line = makeLine(product, draft.optionIds, draft.note || null, draft.quantity);
       if (editing) dispatch({ type: 'remove', key: editing.key });
       dispatch({ type: 'add', line });
       setNoteProduct(null);
@@ -141,7 +146,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
       p_items: cart.lines.map((line) => ({
         product_id: line.productId,
         quantity: line.quantity,
-        option_ids: [],
+          option_ids: line.optionIds,
         note: line.note,
       })),
       p_order_note: cart.note.trim() || null,
@@ -314,6 +319,11 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-bold text-ink">{translateMenuName(line.name, locale)}</p>
+                  {line.optionLabels.length > 0 ? (
+                    <p className="mt-0.5 text-xs font-semibold text-ink-2">
+                      {line.optionLabels.map((label) => translateMenuName(label, locale)).join(' · ')}
+                    </p>
+                  ) : null}
                   {line.note ? (
                     <p className="mt-1 text-xs font-semibold text-busy">{line.note}</p>
                   ) : null}
@@ -373,7 +383,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
         product={noteProduct}
         initial={
           editing
-            ? { optionIds: [], note: editing.note ?? '', quantity: editing.quantity }
+            ? { optionIds: editing.optionIds, note: editing.note ?? '', quantity: editing.quantity }
             : null
         }
         onClose={() => {

@@ -91,8 +91,8 @@ export function OptionGroupSheet({
       const supabase = getSupabaseBrowser();
       const payload = {
         name: trimmed,
-        max_select: mode === 'single' ? 1 : 0,
-        min_select: required ? 1 : 0,
+        max_select: mode === 'single' ? 1 : group && group.max_select !== 1 ? group.max_select : 0,
+        min_select: required ? Math.max(group?.min_select ?? 1, 1) : 0,
       };
 
       let groupId = group?.id;

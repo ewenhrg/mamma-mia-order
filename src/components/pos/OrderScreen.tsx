@@ -175,6 +175,11 @@ export function OrderScreen({ table, role }: Props) {
   // --- actions -------------------------------------------------------------
   const addProduct = useCallback(
     (product: MenuProduct) => {
+      if (product.hasOptions) {
+        setEditing(null);
+        setOptionsFor(product);
+        return;
+      }
       dispatch({ type: 'add', line: makeLine(product, [], null, 1) });
       setRecentIds(pushRecentProduct(product.id));
     },
@@ -191,7 +196,7 @@ export function OrderScreen({ table, role }: Props) {
       const product = optionsFor;
       if (!product) return;
 
-      const line = makeLine(product, [], draft.note || null, draft.quantity);
+      const line = makeLine(product, draft.optionIds, draft.note || null, draft.quantity);
       if (editing) {
         // Modifier = remplacer : la cle de ligne depend de la note.
         dispatch({ type: 'remove', key: editing.line.key });

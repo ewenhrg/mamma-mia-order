@@ -67,17 +67,27 @@ export function warmMenu(): void {
 }
 
 /**
- * Menu public pour le parcours client : pas d'options, produits disponibles seulement.
+ * Menu public pour le parcours client : produits disponibles, avec options
+ * (mix chicha, sauces…) quand la lecture anon est autorisee.
  */
 export async function fetchGuestMenu(): Promise<Menu> {
   const supabase = getSupabaseBrowser();
-  const [categoriesRes, productsRes] = await Promise.all([
+  const [categoriesRes, productsRes, groupsRes, optionsRes, linksRes] = await Promise.all([
     supabase.from('categories').select('*').eq('active', true).order('sort_order'),
     supabase.from('products').select('*').eq('active', true).eq('available', true).order('sort_order'),
+    supabase.from('option_groups').select('*').order('sort_order'),
+    supabase.from('options').select('*').eq('available', true).order('sort_order'),
+    supabase.from('product_option_groups').select('*').order('sort_order'),
   ]);
   const failure = categoriesRes.error ?? productsRes.error;
   if (failure) throw failure;
-  return buildMenu(categoriesRes.data ?? [], productsRes.data ?? [], [], [], []);
+
+  // Avant 0011, l'anon ne peut pas lire les options : le menu reste utilisable.
+  const groups = groupsRes.error ? [] : (groupsRes.data ?? []);
+  const options = optionsRes.error ? [] : (optionsRes.data ?? []);
+  const links = linksRes.error ? [] : (linksRes.data ?? []);
+
+  return buildMenu(categoriesRes.data ?? [], productsRes.data ?? [], groups, options, links);
 }
 
 /**
