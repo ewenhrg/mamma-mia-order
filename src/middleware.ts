@@ -27,26 +27,31 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // getUser() revalide le token aupres de Supabase et rafraichit le cookie.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
-  if (!user && !isPublic) {
+  // Lecture du JWT en cookie : pas d'aller-retour Auth a chaque tap.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session && !isPublic) {
     const redirect = request.nextUrl.clone();
     redirect.pathname = '/login';
     redirect.searchParams.set('next', pathname);
     return NextResponse.redirect(redirect);
   }
 
-  if (user && pathname === '/login') {
+  if (session && pathname === '/login') {
     const redirect = request.nextUrl.clone();
     redirect.pathname = '/';
     redirect.search = '';
     return NextResponse.redirect(redirect);
+  }
+
+  // Renouvelle le token seulement en revenant a la salle, pas a chaque table.
+  if (session && pathname === '/') {
+    await supabase.auth.getUser();
   }
 
   return response;

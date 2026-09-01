@@ -29,7 +29,7 @@ function ProductCardBase({ product, quantity, onTap, onLongPress }: Props) {
         event.preventDefault();
         if (!disabled) onLongPress(product);
       }}
-      className={`tap relative flex min-h-[6.5rem] flex-col justify-between rounded-2xl border p-3 text-left shadow-sm ${
+      className={`tap cv-card relative flex min-h-[6.5rem] flex-col justify-between rounded-2xl border p-3 text-left shadow-sm ${
         disabled
           ? 'border-line bg-canvas opacity-55'
           : quantity > 0

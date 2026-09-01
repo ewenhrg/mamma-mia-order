@@ -42,8 +42,9 @@ export type StaffSession = {
 export async function getStaffSession(): Promise<StaffSession | null> {
   const supabase = await getSupabaseServer();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return null;
 
   const { data } = await supabase

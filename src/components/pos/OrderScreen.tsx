@@ -345,6 +345,8 @@ export function OrderScreen({ table, role }: Props) {
         <div className="flex items-center gap-2 px-3 py-2.5">
           <Link
             href="/"
+            prefetch
+            onPointerDown={() => router.prefetch('/')}
             className="tap flex size-11 shrink-0 items-center justify-center rounded-xl text-ink active:bg-canvas"
             aria-label={t('order.back')}
           >

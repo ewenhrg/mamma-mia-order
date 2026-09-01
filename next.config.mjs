@@ -8,6 +8,12 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['@supabase/supabase-js'],
+    // Next 15 met 0s par defaut : chaque tap refetchait la page.
+    // 30s : retour salle / meme table = instantane. Realtime rafraichit ensuite.
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
   },
 };
 

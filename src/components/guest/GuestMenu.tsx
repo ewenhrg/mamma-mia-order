@@ -43,8 +43,14 @@ export function GuestUnavailable() {
 
 export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: string }) {
   const { t, locale } = useI18n();
-  const [menu, setMenu] = useState<Menu>(EMPTY);
-  const [loading, setLoading] = useState(true);
+  const [menu, setMenu] = useState<Menu>(() => {
+    const cached = readJSON<Menu | null>(STORAGE_KEYS.guestMenuCache, null);
+    return cached?.products?.length ? cached : EMPTY;
+  });
+  const [loading, setLoading] = useState(() => {
+    const cached = readJSON<Menu | null>(STORAGE_KEYS.guestMenuCache, null);
+    return !cached?.products?.length;
+  });
   const [error, setError] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
@@ -78,6 +84,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
         setMenu(fresh);
         setCategoryId((current) => current ?? fresh.categories[0]?.id ?? null);
         setError(null);
+        writeJSON(STORAGE_KEYS.guestMenuCache, fresh);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(describeDbError(err));

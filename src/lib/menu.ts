@@ -23,6 +23,48 @@ export function normalize(value: string): string {
 }
 
 const EMPTY_MENU: Menu = { categories: [], products: [] };
+const MENU_TTL_MS = 5 * 60_000;
+
+let memoryMenu: Menu | null = null;
+let memoryMenuAt = 0;
+let menuInflight: Promise<Menu> | null = null;
+
+function isFresh(at: number): boolean {
+  return Date.now() - at < MENU_TTL_MS;
+}
+
+function readCachedMenu(): Menu | null {
+  if (memoryMenu && memoryMenu.products.length > 0) return memoryMenu;
+  const stored = readJSON<Menu | null>(STORAGE_KEYS.menuCache, null);
+  if (stored?.products?.length) {
+    memoryMenu = stored;
+    memoryMenuAt = Date.now();
+    return stored;
+  }
+  return null;
+}
+
+export async function loadMenu(force = false): Promise<Menu> {
+  if (!force && memoryMenu && isFresh(memoryMenuAt)) return memoryMenu;
+  if (!force && menuInflight) return menuInflight;
+  const request = fetchMenu()
+    .then((fresh) => {
+      memoryMenu = fresh;
+      memoryMenuAt = Date.now();
+      writeJSON(STORAGE_KEYS.menuCache, fresh);
+      return fresh;
+    })
+    .finally(() => {
+      if (menuInflight === request) menuInflight = null;
+    });
+  menuInflight = request;
+  return request;
+}
+
+/** Prefetch depuis la salle : ouvrir une table n'attend plus le menu. */
+export function warmMenu(): void {
+  void loadMenu();
+}
 
 /**
  * Menu public pour le parcours client : pas d'options, produits disponibles seulement.
@@ -153,9 +195,9 @@ export type MenuState = {
  * veille ou en reseau lent), puis revalide en arriere-plan.
  */
 export function useMenu(): MenuState {
-  const [menu, setMenu] = useState<Menu>(EMPTY_MENU);
-  const [loading, setLoading] = useState(true);
-  const [stale, setStale] = useState(false);
+  const [menu, setMenu] = useState<Menu>(() => readCachedMenu() ?? EMPTY_MENU);
+  const [loading, setLoading] = useState(() => !readCachedMenu());
+  const [stale, setStale] = useState(() => Boolean(readCachedMenu()));
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   const mounted = useRef(true);
@@ -168,21 +210,13 @@ export function useMenu(): MenuState {
   }, []);
 
   useEffect(() => {
-    const cached = readJSON<Menu | null>(STORAGE_KEYS.menuCache, null);
-    if (cached && cached.products?.length) {
-      setMenu(cached);
-      setLoading(false);
-      setStale(true);
-    }
-
     let cancelled = false;
-    fetchMenu()
+    loadMenu(nonce > 0)
       .then((fresh) => {
         if (cancelled || !mounted.current) return;
         setMenu(fresh);
         setStale(false);
         setError(null);
-        writeJSON(STORAGE_KEYS.menuCache, fresh);
       })
       .catch((err: unknown) => {
         if (cancelled || !mounted.current) return;

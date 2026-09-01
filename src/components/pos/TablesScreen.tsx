@@ -6,6 +6,7 @@ import type { StaffSession } from '@/lib/supabase/server';
 import { useTables } from '@/lib/useTables';
 import { useDrafts } from '@/lib/drafts';
 import { formatAmount } from '@/lib/money';
+import { warmMenu } from '@/lib/menu';
 import { TableCard } from '@/components/pos/TableCard';
 import { OutboxBanner } from '@/components/pos/OutboxBanner';
 import { SignOutButton } from '@/components/SignOutButton';
@@ -24,6 +25,7 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    warmMenu();
     const id = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);

@@ -2,6 +2,7 @@
 
 import { memo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { formatAmount } from '@/lib/money';
 import { formatElapsed } from '@/lib/time';
 import type { TableOverviewRow } from '@/lib/types';
@@ -75,6 +76,8 @@ export function tableState(table: TableOverviewRow, now: number): TableState {
 
 function TableCardBase({ table, draft, now }: Props) {
   const { t } = useI18n();
+  const router = useRouter();
+  const href = `/table/${table.id}`;
   const hasOrder = table.order_id !== null;
   const state = tableState(table, now);
   const style = STATE_STYLES[state];
@@ -84,8 +87,8 @@ function TableCardBase({ table, draft, now }: Props) {
 
   return (
     <Link
-      href={`/table/${table.id}`}
-      prefetch={false}
+      href={href}
+      onPointerDown={() => router.prefetch(href)}
       className={`tap relative flex min-h-[7.5rem] flex-col justify-between rounded-2xl border p-3 shadow-sm ${style.card}`}
     >
       {draft ? (
