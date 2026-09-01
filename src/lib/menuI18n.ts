@@ -16,6 +16,7 @@ const CATEGORY_EN: Record<string, string> = {
   Milkshakes: 'Milkshakes',
   'Cocktails frais': 'Fresh cocktails',
   Mojitos: 'Mojitos',
+  Chicha: 'Shisha',
 };
 
 const PRODUCT_EN: Record<string, string> = {
@@ -123,6 +124,29 @@ const PRODUCT_EN: Record<string, string> = {
   'Mojito Sunshine': 'Sunshine mojito',
   'Mojito Scotch Mint': 'Scotch mint mojito',
   'Mojito Mamma Mia': 'Mamma Mia mojito',
+  'Chicha pomme': 'Apple shisha',
+  'Chicha menthe': 'Mint shisha',
+  'Chicha chewing-gum': 'Gum shisha',
+  'Chicha kiwi': 'Kiwi shisha',
+  'Chicha orange': 'Orange shisha',
+  'Chicha pêche': 'Peach shisha',
+  'Chicha myrtille': 'Blueberry shisha',
+  'Chicha raisin': 'Grape shisha',
+  'Chicha pastèque': 'Watermelon shisha',
+  'Chicha mangue': 'Mango shisha',
+  'Chicha Magic Love': 'Magic Love shisha',
+  'Chicha cola': 'Cola shisha',
+  'Chicha vanille': 'Vanilla shisha',
+  'Chicha citron': 'Lemon shisha',
+  'Chicha melon': 'Melon shisha',
+  'Chicha Power': 'Power shisha',
+  'Chicha Lotus': 'Lotus shisha',
+  'Chicha fraise': 'Strawberry shisha',
+  'Chicha Twist': 'Twist shisha',
+  'Chicha mix 2 parfums': 'Mixed shisha — 2 flavors',
+  'Recharge chicha': 'Shisha change / refill',
+  'Chicha fruits de saison': 'Fresh seasonal fruit shisha',
+  'Chicha Mamma Mia': 'Mamma Mia shisha',
 };
 
 const DESC_EN: Record<string, string> = {
@@ -161,6 +185,10 @@ const DESC_EN: Record<string, string> = {
   'Fraise, mangue, banane': 'Strawberry, mango, banana',
   'Fraise, mangue, glace': 'Strawberry, mango, ice cream',
   'Avocat, kiwi, banane, lait, miel, noix': 'Avocado, kiwi, banana, milk, honey, nuts',
+  'Deux parfums au choix': 'Two flavors of your choice',
+  'Changement / recharge': 'Change / refill',
+  'Fruits frais de saison': 'Fresh seasonal fruit',
+  'Edition speciale — demander au shisha man': 'Special edition — ask the shisha man',
 };
 
 const NAME_TO_EN: Record<string, string> = { ...CATEGORY_EN, ...PRODUCT_EN };
