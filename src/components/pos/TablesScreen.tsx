@@ -15,6 +15,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Spinner } from '@/components/ui/Spinner';
 import { useI18n } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/messages';
+import { sortByTableLabel, sortFloorTables } from '@/lib/tableSort';
 
 export function TablesScreen({ staff }: { staff: StaffSession }) {
   const { t, locale } = useI18n();
@@ -36,10 +37,10 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
   }, [tables]);
 
-  const visible = useMemo(
-    () => (zoneId === 'ALL' ? tables : tables.filter((row) => row.zone_id === zoneId)),
-    [tables, zoneId],
-  );
+  const visible = useMemo(() => {
+    const rows = zoneId === 'ALL' ? tables : tables.filter((row) => row.zone_id === zoneId);
+    return zoneId === 'ALL' ? sortFloorTables(rows) : sortByTableLabel(rows);
+  }, [tables, zoneId]);
 
   const stats = useMemo(() => {
     let open = 0;
