@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorNote, Toggle } from '@/components/admin/ui';
+import { StaffZonesSheet } from '@/components/admin/StaffZonesSheet';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeDbError } from '@/lib/adminErrors';
 import { useI18n } from '@/lib/i18n';
-import type { StaffRole, StaffRow } from '@/lib/types';
+import type { StaffRole, StaffRow, StaffZoneRow, ZoneRow } from '@/lib/types';
 
 export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: string; currentRole: StaffRole }) {
   const { t } = useI18n();
@@ -16,24 +17,55 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
     { value: 'admin', label: t('admin.role.admin'), hint: t('admin.role.adminHint') },
   ];
   const [staff, setStaff] = useState<StaffRow[]>([]);
+  const [zones, setZones] = useState<ZoneRow[]>([]);
+  const [assignments, setAssignments] = useState<StaffZoneRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<StaffRow | null>(null);
 
   const reload = useCallback(async () => {
     setError(null);
-    const { data, error: queryError } = await getSupabaseBrowser()
-      .from('staff')
-      .select('*')
-      .order('created_at');
-    if (queryError) setError(describeDbError(queryError));
-    else setStaff(data ?? []);
+    const supabase = getSupabaseBrowser();
+    const [staffRes, zonesRes, assignRes] = await Promise.all([
+      supabase.from('staff').select('*').order('created_at'),
+      supabase.from('zones').select('*').eq('active', true).order('sort_order'),
+      supabase.from('staff_zones').select('*'),
+    ]);
+    if (staffRes.error) setError(describeDbError(staffRes.error));
+    else setStaff(staffRes.data ?? []);
+
+    if (zonesRes.error) setError(describeDbError(zonesRes.error));
+    else setZones(zonesRes.data ?? []);
+
+    if (assignRes.error) {
+      const missing = assignRes.error.code === 'PGRST205' || assignRes.error.code === '42P01';
+      if (!missing) setError(describeDbError(assignRes.error));
+      else setAssignments([]);
+    } else {
+      setAssignments(assignRes.data ?? []);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const zonesByStaff = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const row of assignments) {
+      const list = map.get(row.staff_id) ?? [];
+      list.push(row.zone_id);
+      map.set(row.staff_id, list);
+    }
+    return map;
+  }, [assignments]);
+
+  const zoneName = useCallback(
+    (id: string) => zones.find((z) => z.id === id)?.name ?? id,
+    [zones],
+  );
 
   async function update(member: StaffRow, patch: Partial<Pick<StaffRow, 'active' | 'role'>>) {
     setBusyId(member.id);
@@ -68,6 +100,13 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
         <ul className="space-y-2">
           {staff.map((member) => {
             const isSelf = member.id === currentUserId;
+            const assigned = zonesByStaff.get(member.id) ?? [];
+            const zoneLabel =
+              member.role !== 'server'
+                ? t('admin.zonesSeesAll')
+                : assigned.length === 0
+                  ? t('admin.zonesSeesAll')
+                  : assigned.map(zoneName).join(' · ');
             return (
               <li key={member.id} className="rounded-2xl border border-line bg-surface p-3">
                 <div className="flex items-center gap-3">
@@ -79,16 +118,15 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
                       {member.full_name}
                       {isSelf ? <span className="ms-1.5 text-xs font-semibold text-muted">{t('admin.you')}</span> : null}
                     </p>
-                    <p className="text-xs text-muted">
+                    <p className="truncate text-xs text-muted">
                       {member.active ? t('admin.active') : t('admin.inactive')} ·{' '}
                       {ROLES.find((r) => r.value === member.role)?.label}
                     </p>
+                    <p className="truncate text-xs font-semibold text-ink-2">{zoneLabel}</p>
                   </div>
 
                   {busyId === member.id ? <Spinner className="size-5 text-muted" /> : null}
 
-                  {/* On ne peut pas se desactiver soi-meme : ce serait perdre
-                      l'acces a cet ecran sans moyen de revenir. */}
                   <Toggle
                     checked={member.active}
                     onChange={(next) => void update(member, { active: next })}
@@ -116,6 +154,16 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
                     ))}
                   </div>
                 ) : null}
+
+                {canPromote && member.role === 'server' ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(member)}
+                    className="tap mt-2.5 h-12 w-full rounded-xl border border-line text-sm font-bold text-ink-2 active:bg-canvas"
+                  >
+                    {t('admin.zonesPick')}
+                  </button>
+                ) : null}
               </li>
             );
           })}
@@ -129,6 +177,14 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
           </p>
         ))}
       </div>
+
+      <StaffZonesSheet
+        member={editing}
+        zones={zones}
+        assignedIds={editing ? (zonesByStaff.get(editing.id) ?? []) : []}
+        onClose={() => setEditing(null)}
+        onSaved={() => void reload()}
+      />
     </div>
   );
 }

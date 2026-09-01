@@ -84,6 +84,12 @@ export type ZoneRow = {
   updated_at: string;
 };
 
+/** Zones qu un serveur a le droit de voir. Aucune ligne = toute la salle. */
+export type StaffZoneRow = {
+  staff_id: string;
+  zone_id: string;
+};
+
 export type RestaurantTableRow = {
   id: string;
   label: string;
@@ -206,6 +212,7 @@ export type Database = {
       zones: Table<ZoneRow>;
       orders: Table<OrderRow>;
       order_items: Table<OrderItemRow>;
+      staff_zones: Table<StaffZoneRow>;
     };
     Views: {
       table_overview: { Row: TableOverviewRow; Relationships: [] };
@@ -280,6 +287,10 @@ export type Database = {
       pos_delete_category: { Args: { p_category_id: string }; Returns: { ok: true; deleted: boolean } };
       pos_delete_product: { Args: { p_product_id: string }; Returns: { ok: true; deleted: boolean } };
       pos_delete_zone: { Args: { p_zone_id: string }; Returns: { ok: true; deleted: boolean } };
+      pos_set_staff_zones: {
+        Args: { p_staff_id: string; p_zone_ids: string[] };
+        Returns: { ok: true; zone_count: number };
+      };
     };
     Enums: {
       staff_role: StaffRole;

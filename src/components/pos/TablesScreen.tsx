@@ -131,7 +131,11 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
           </div>
         ) : visible.length === 0 ? (
           <div className="mt-10 text-center text-sm text-muted">
-            <p>{t('salle.emptyZone')}</p>
+            <p>
+              {staff.role === 'server' && zoneId === 'ALL'
+                ? t('salle.noAssignedZones')
+                : t('salle.emptyZone')}
+            </p>
             {staff.role !== 'server' ? (
               <Link href="/admin/tables" className="mt-3 inline-block font-semibold text-brand underline">
                 {t('salle.addTables')}

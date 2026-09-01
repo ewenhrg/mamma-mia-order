@@ -54,6 +54,7 @@ const fr = {
   'salle.allZones': 'Toutes',
   'salle.retry': 'Reessayer',
   'salle.emptyZone': 'Aucune table dans cette zone.',
+  'salle.noAssignedZones': 'Aucune zone ne t’a ete assignee. Demande a un admin.',
   'salle.addTables': 'Ajouter des tables',
   'salle.refresh': 'Rafraichir la salle',
   'salle.adminMenu': 'Menu et produits',
@@ -246,6 +247,12 @@ const fr = {
   'admin.role.serverHint': 'Prend les commandes',
   'admin.role.managerHint': 'Gere le menu, annule des lignes, accorde des remises',
   'admin.role.adminHint': 'Acces complet',
+  'admin.zonesPick': 'Choisir les zones',
+  'admin.zonesFor': 'Zones de {name}',
+  'admin.zonesForHint': 'Coche les zones que cette personne voit. Aucune = toute la salle.',
+  'admin.zonesSeesAll': 'Toute la salle',
+  'admin.zonesSeesN': '{n} zone(s)',
+  'admin.zonesNone': 'Cree d’abord des zones dans Admin › Tables.',
 
   'admin.qrBlurb':
     'Un QR par table. Imprime, plastifie, pose sur la table. Le client scanne et commande ; ca arrive dans le POS.',
@@ -264,6 +271,8 @@ const fr = {
   'err.orderClosed': 'Cette commande est deja cloturee.',
   'err.orderNotFound': 'Cette commande est introuvable.',
   'err.staffInactive': 'Ton compte n est pas actif. Demande a un admin de t activer.',
+  'err.staffNotServer': 'On ne limite les zones que pour un serveur.',
+  'err.zoneNotFound': 'Cette zone n’existe plus.',
   'err.schemaCache':
     'L’API Supabase sert encore l’ancien schema. Dans SQL Editor, execute : notify pgrst, \'reload schema\'; puis recharge.',
   'err.missingTable': 'Une table attendue n’existe pas. Verifie les migrations.',
@@ -333,6 +342,7 @@ const en: Record<MessageKey, string> = {
   'salle.allZones': 'All',
   'salle.retry': 'Retry',
   'salle.emptyZone': 'No tables in this zone.',
+  'salle.noAssignedZones': 'No zone has been assigned to you. Ask an admin.',
   'salle.addTables': 'Add tables',
   'salle.refresh': 'Refresh floor',
   'salle.adminMenu': 'Menu and products',
@@ -525,6 +535,12 @@ const en: Record<MessageKey, string> = {
   'admin.role.serverHint': 'Takes orders',
   'admin.role.managerHint': 'Manages the menu, voids lines, grants discounts',
   'admin.role.adminHint': 'Full access',
+  'admin.zonesPick': 'Choose zones',
+  'admin.zonesFor': '{name}’s zones',
+  'admin.zonesForHint': 'Tick the zones this person sees. None = the whole floor.',
+  'admin.zonesSeesAll': 'Whole floor',
+  'admin.zonesSeesN': '{n} zone(s)',
+  'admin.zonesNone': 'Create zones first in Admin › Tables.',
 
   'admin.qrBlurb':
     'One QR per table. Print, laminate, put on the table. The guest scans and orders; it lands in the POS.',
@@ -542,6 +558,8 @@ const en: Record<MessageKey, string> = {
   'err.orderClosed': 'This order is already closed.',
   'err.orderNotFound': 'This order was not found.',
   'err.staffInactive': 'Your account is not active. Ask an admin to activate you.',
+  'err.staffNotServer': 'Zones can only be limited for a server.',
+  'err.zoneNotFound': 'This zone no longer exists.',
   'err.schemaCache':
     'The Supabase API still has the old schema. In SQL Editor run: notify pgrst, \'reload schema\'; then reload.',
   'err.missingTable': 'An expected table is missing. Check the migrations.',
@@ -609,6 +627,7 @@ const ar: Record<MessageKey, string> = {
   'salle.allZones': 'الكل',
   'salle.retry': 'إعادة المحاولة',
   'salle.emptyZone': 'لا توجد طاولات في هذه المنطقة.',
+  'salle.noAssignedZones': 'لم تُعيَّن لك أي منطقة. اطلب من أدمن.',
   'salle.addTables': 'إضافة طاولات',
   'salle.refresh': 'تحديث الصالة',
   'salle.adminMenu': 'المنيو والمنتجات',
@@ -801,6 +820,12 @@ const ar: Record<MessageKey, string> = {
   'admin.role.serverHint': 'يأخذ الطلبات',
   'admin.role.managerHint': 'يدير المنيو ويلغي الأصناف ويعطي الخصم',
   'admin.role.adminHint': 'صلاحية كاملة',
+  'admin.zonesPick': 'اختيار المناطق',
+  'admin.zonesFor': 'مناطق {name}',
+  'admin.zonesForHint': 'اختر المناطق التي يراها هذا الشخص. لا شيء = كل الصالة.',
+  'admin.zonesSeesAll': 'كل الصالة',
+  'admin.zonesSeesN': '{n} منطقة',
+  'admin.zonesNone': 'أنشئ مناطق أولا من الإدارة › الطاولات.',
 
   'admin.qrBlurb':
     'رمز QR لكل طاولة. اطبع، غلّف، ضعه على الطاولة. العميل يمسح ويطلب؛ يصل إلى نقطة البيع.',
@@ -818,6 +843,8 @@ const ar: Record<MessageKey, string> = {
   'err.orderClosed': 'هذا الطلب مغلق.',
   'err.orderNotFound': 'الطلب غير موجود.',
   'err.staffInactive': 'حسابك غير نشط. اطلب من أدمن تفعيلَك.',
+  'err.staffNotServer': 'يمكن تحديد المناطق للنادل فقط.',
+  'err.zoneNotFound': 'هذه المنطقة لم تعد موجودة.',
   'err.schemaCache':
     'واجهة Supabase ما زالت على المخطط القديم. في SQL Editor نفّذ: notify pgrst, \'reload schema\'; ثم أعد التحميل.',
   'err.missingTable': 'جدول متوقع غير موجود. تحقق من المايغريشن.',

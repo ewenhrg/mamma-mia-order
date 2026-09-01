@@ -37,6 +37,8 @@ export function describeDbError(error: unknown): string {
   if (message.includes('ORDER_CLOSED')) return t('err.orderClosed');
   if (message.includes('ORDER_NOT_FOUND')) return t('err.orderNotFound');
   if (message.includes('STAFF_INACTIVE')) return t('err.staffInactive');
+  if (message.includes('STAFF_NOT_SERVER')) return t('err.staffNotServer');
+  if (message.includes('ZONE_NOT_FOUND')) return t('err.zoneNotFound');
 
   if (code === 'PGRST205' || code === 'PGRST204' || /schema cache/i.test(message)) {
     return t('err.schemaCache');

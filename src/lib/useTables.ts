@@ -65,6 +65,7 @@ export function useTables() {
       .channel('pos-room')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_zones' }, scheduleRefresh)
       .subscribe((status) => {
         if (mounted.current) setLive(status === 'SUBSCRIBED');
       });
