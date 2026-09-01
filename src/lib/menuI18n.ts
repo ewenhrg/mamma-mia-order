@@ -17,6 +17,7 @@ const CATEGORY_EN: Record<string, string> = {
   'Cocktails frais': 'Fresh cocktails',
   Mojitos: 'Mojitos',
   Chicha: 'Shisha',
+  Alcool: 'Alcohol',
 };
 
 const PRODUCT_EN: Record<string, string> = {
@@ -124,6 +125,20 @@ const PRODUCT_EN: Record<string, string> = {
   'Mojito Sunshine': 'Sunshine mojito',
   'Mojito Scotch Mint': 'Scotch mint mojito',
   'Mojito Mamma Mia': 'Mamma Mia mojito',
+  'Parfums mojito': 'Mojito flavors',
+  'Parfums jus': 'Juice flavors',
+  'V1 MOJITO': 'V1 Mojito',
+  'V2 MOJITO': 'V2 Mojito',
+  'V1 Mojito': 'V1 Mojito',
+  'V2 Mojito': 'V2 Mojito',
+  'V1 JUICE': 'V1 Juice',
+  'V2 JUICE': 'V2 Juice',
+  'V1 Juice': 'V1 Juice',
+  'V2 Juice': 'V2 Juice',
+  'V1 JUS': 'V1 Juice',
+  'V2 JUS': 'V2 Juice',
+  'V1 Jus': 'V1 Juice',
+  'V2 Jus': 'V2 Juice',
   'Chicha pomme': 'Apple shisha',
   'Chicha menthe': 'Mint shisha',
   'Chicha chewing-gum': 'Gum shisha',
