@@ -361,17 +361,24 @@ export function OrderScreen({ table, role }: Props) {
           </div>
 
           <LanguageSwitcher compact />
+        </div>
 
+        <div className="flex items-center gap-2 px-3 pb-2.5">
           <button
             type="button"
             onClick={() => {
-              setSearchOpen((v) => !v);
-              if (!searchOpen) requestAnimationFrame(() => searchInputRef.current?.focus());
-              else setQuery('');
+              if (searchOpen) {
+                setSearchOpen(false);
+                setQuery('');
+              } else {
+                setSearchOpen(true);
+                requestAnimationFrame(() => searchInputRef.current?.focus());
+              }
             }}
             aria-label={t('order.search')}
-            className={`tap flex size-11 shrink-0 items-center justify-center rounded-xl border ${
-              searchOpen ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink-2'
+            aria-pressed={searchOpen}
+            className={`tap flex size-11 shrink-0 items-center justify-center rounded-full border ${
+              searchOpen ? 'border-brand bg-brand text-white' : 'border-line bg-surface text-ink-2'
             }`}
           >
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -379,6 +386,24 @@ export function OrderScreen({ table, role }: Props) {
               <path d="M16 16l4.5 4.5" strokeLinecap="round" />
             </svg>
           </button>
+          <div className="no-scrollbar snap-x-tabs flex min-w-0 flex-1 gap-2 overflow-x-auto">
+            {showRecentTab ? (
+              <CategoryTab
+                active={category === RECENT_TAB && !searching}
+                onClick={() => selectCategory(RECENT_TAB)}
+                label={t('order.recent')}
+              />
+            ) : null}
+            {displayMenu.categories.map((c) => (
+              <CategoryTab
+                key={c.id}
+                active={category === c.id && !searching}
+                onClick={() => selectCategory(c.id)}
+                label={c.name}
+                color={c.color}
+              />
+            ))}
+          </div>
         </div>
 
         {searchOpen ? (
@@ -390,29 +415,11 @@ export function OrderScreen({ table, role }: Props) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('order.searchPlaceholder')}
               autoComplete="off"
+              enterKeyHint="search"
               className="h-12 w-full rounded-2xl border border-line bg-canvas px-4 text-ink outline-none placeholder:text-muted/70 focus:border-brand focus:bg-surface"
             />
           </div>
-        ) : (
-          <div className="no-scrollbar snap-x-tabs flex gap-2 overflow-x-auto px-3 pb-2.5">
-            {showRecentTab ? (
-              <CategoryTab
-                active={category === RECENT_TAB}
-                onClick={() => selectCategory(RECENT_TAB)}
-                label={t('order.recent')}
-              />
-            ) : null}
-            {displayMenu.categories.map((c) => (
-              <CategoryTab
-                key={c.id}
-                active={category === c.id}
-                onClick={() => selectCategory(c.id)}
-                label={c.name}
-                color={c.color}
-              />
-            ))}
-          </div>
-        )}
+        ) : null}
       </header>
 
       <OutboxBanner />
