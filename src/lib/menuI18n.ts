@@ -182,6 +182,7 @@ const PRODUCT_EN: Record<string, string> = {
   'Recharge chicha': 'Shisha change / refill',
   'Chicha fruits de saison': 'Fresh seasonal fruit shisha',
   'Chicha Mamma Mia': 'Mamma Mia shisha',
+  'Hors carte': 'Off-menu',
 };
 
 const DESC_EN: Record<string, string> = {

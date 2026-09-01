@@ -49,11 +49,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirect);
   }
 
-  // Renouvelle le token seulement en revenant a la salle, pas a chaque table.
-  if (session && pathname === '/') {
-    await supabase.auth.getUser();
-  }
-
+  // Pas de getUser() ici : un refresh Auth qui echoue (prefetch de la salle,
+  // fleche retour) ecrasait les cookies et renvoyait au login.
   return response;
 }
 

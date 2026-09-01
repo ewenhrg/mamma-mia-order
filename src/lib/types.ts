@@ -172,9 +172,15 @@ export type TableOverviewRow = {
   requested_count?: number;
 };
 
-/** Payload envoye a pos_submit_order : jamais de prix, uniquement des ids. */
+/**
+ * Payload envoye a pos_submit_order.
+ * Produit catalogue : product_id, le prix est relu en base.
+ * Hors carte (staff seulement) : custom_name + custom_price_cents, sans product_id.
+ */
 export type SubmitItemPayload = {
-  product_id: string;
+  product_id?: string | null;
+  custom_name?: string;
+  custom_price_cents?: number;
   quantity: number;
   option_ids: string[];
   note: string | null;

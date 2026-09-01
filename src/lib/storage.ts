@@ -53,7 +53,6 @@ export const STORAGE_KEYS = {
   cart: (tableId: string) => `mm.cart.v1.${tableId}`,
   outbox: 'mm.outbox.v1',
   lastCategory: 'mm.lastCategory.v1',
-  recentProducts: 'mm.recentProducts.v1',
   menuCache: 'mm.menu.v1',
   guestMenuCache: 'mm.guest.menu.v1',
   guestCart: (token: string) => `mm.guest.cart.v1.${token}`,

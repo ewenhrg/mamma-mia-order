@@ -21,6 +21,36 @@ export type CartState = {
 
 export const MAX_LINE_QUANTITY = 99;
 export const MAX_CART_LINES = 200;
+export const CUSTOM_PREFIX = 'custom:';
+export const CUSTOM_LABEL = 'Hors carte';
+export const MAX_CUSTOM_NAME = 80;
+/** 20 000 EGP — plafond serveur, pas un prix de menu. */
+export const MAX_CUSTOM_PRICE_CENTS = 2_000_000;
+
+export function isCustomLine(productId: string): boolean {
+  return productId.startsWith(CUSTOM_PREFIX);
+}
+
+export function makeCustomLine(
+  name: string,
+  priceCents: number,
+  quantity: number,
+  note: string | null,
+): CartLine {
+  const trimmed = name.trim().slice(0, MAX_CUSTOM_NAME);
+  const id = `${CUSTOM_PREFIX}${trimmed}|${priceCents}`;
+  return {
+    key: lineKey(id, [], note),
+    productId: id,
+    name: trimmed,
+    basePriceCents: priceCents,
+    unitPriceCents: priceCents,
+    quantity,
+    optionIds: [],
+    optionLabels: [CUSTOM_LABEL],
+    note,
+  };
+}
 
 /**
  * Deux ajouts identiques doivent fusionner, deux ajouts differents non.
@@ -146,7 +176,8 @@ export function cartItemCount(lines: CartLine[]): number {
 
 /**
  * Total indicatif affiche au serveur. Le montant qui fait foi est celui
- * recalcule par la base lors de l'envoi (pos_submit_order).
+ * recalcule par la base lors de l'envoi (pos_submit_order), sauf hors carte
+ * ou le prix saisi par le serveur est enregistre tel quel.
  */
 export function cartTotalCents(lines: CartLine[]): number {
   let total = 0;

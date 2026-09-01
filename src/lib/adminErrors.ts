@@ -39,6 +39,7 @@ export function describeDbError(error: unknown): string {
   if (message.includes('STAFF_INACTIVE')) return t('err.staffInactive');
   if (message.includes('STAFF_NOT_SERVER')) return t('err.staffNotServer');
   if (message.includes('ZONE_NOT_FOUND')) return t('err.zoneNotFound');
+  if (message.includes('INVALID_CUSTOM')) return t('err.invalidCustom');
 
   if (code === 'PGRST205' || code === 'PGRST204' || /schema cache/i.test(message)) {
     return t('err.schemaCache');

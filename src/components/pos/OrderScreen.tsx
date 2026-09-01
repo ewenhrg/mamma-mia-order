@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { CartSheet } from '@/components/pos/CartSheet';
+import { CustomItemSheet } from '@/components/pos/CustomItemSheet';
 import { OutboxBanner } from '@/components/pos/OutboxBanner';
 import { ProductCard } from '@/components/pos/ProductCard';
 import { ProductOptionsSheet, type OptionsDraft } from '@/components/pos/ProductOptionsSheet';
@@ -22,6 +23,8 @@ import {
   cartItemCount,
   cartReducer,
   cartTotalCents,
+  isCustomLine,
+  makeCustomLine,
   makeLine,
   type CartLine,
   type CartState,
@@ -30,7 +33,7 @@ import { normalize, useMenu } from '@/lib/menu';
 import { localizeMenu } from '@/lib/menuI18n';
 import { formatAmount } from '@/lib/money';
 import { enqueue, onOrderSent } from '@/lib/outbox';
-import { getLastCategory, getRecentProductIds, pushRecentProduct, setLastCategory } from '@/lib/prefs';
+import { getLastCategory, setLastCategory } from '@/lib/prefs';
 import { STORAGE_KEYS, readJSON, removeKey, writeJSON } from '@/lib/storage';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeAdminError } from '@/lib/adminErrors';
@@ -38,8 +41,6 @@ import { useOrder } from '@/lib/useOrder';
 import { useI18n } from '@/lib/i18n';
 import { plural } from '@/lib/messages';
 import type { MenuProduct, RestaurantTableRow, StaffRole } from '@/lib/types';
-
-const RECENT_TAB = '__recent__';
 
 type Props = {
   table: RestaurantTableRow;
@@ -88,9 +89,6 @@ export function OrderScreen({ table, role }: Props) {
   const deferredQuery = useDeferredValue(query);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const [recentIds, setRecentIds] = useState<string[]>([]);
-  useEffect(() => setRecentIds(getRecentProductIds()), []);
-
   // Reprend la categorie de la table precedente : pendant un service, le
   // serveur enchaine souvent les memes rubriques.
   useEffect(() => {
@@ -104,13 +102,15 @@ export function OrderScreen({ table, role }: Props) {
     setCategory(id);
     setQuery('');
     setSearchOpen(false);
-    if (id !== RECENT_TAB) setLastCategory(id);
+    setLastCategory(id);
   }, []);
 
   // --- feuilles et retours visuels ----------------------------------------
   const [cartOpen, setCartOpen] = useState(false);
   const [optionsFor, setOptionsFor] = useState<MenuProduct | null>(null);
   const [editing, setEditing] = useState<{ line: CartLine; draft: OptionsDraft } | null>(null);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customEditing, setCustomEditing] = useState<CartLine | null>(null);
   const [toast, setToast] = useState<{ kind: 'ok' | 'info'; text: string } | null>(null);
   const submitLock = useRef(false);
   const [submitting, setSubmitting] = useState(false);
@@ -154,20 +154,14 @@ export function OrderScreen({ table, role }: Props) {
     return map;
   }, [cart.lines]);
 
-  const recentProducts = useMemo(
-    () => recentIds.map((id) => productsById.get(id)).filter((p): p is MenuProduct => Boolean(p)),
-    [recentIds, productsById],
-  );
-
   const visibleProducts = useMemo(() => {
     const q = normalize(deferredQuery.trim());
     if (q.length > 0) {
       return displayMenu.products.filter((p) => p.searchKey.includes(q));
     }
-    if (category === RECENT_TAB) return recentProducts;
     if (!category) return [];
     return displayMenu.products.filter((p) => p.categoryId === category);
-  }, [displayMenu.products, deferredQuery, category, recentProducts]);
+  }, [displayMenu.products, deferredQuery, category]);
 
   const draftCount = useMemo(() => cartItemCount(cart.lines), [cart.lines]);
   const draftTotal = useMemo(() => cartTotalCents(cart.lines), [cart.lines]);
@@ -181,7 +175,6 @@ export function OrderScreen({ table, role }: Props) {
         return;
       }
       dispatch({ type: 'add', line: makeLine(product, [], null, 1) });
-      setRecentIds(pushRecentProduct(product.id));
     },
     [],
   );
@@ -202,7 +195,6 @@ export function OrderScreen({ table, role }: Props) {
         dispatch({ type: 'remove', key: editing.line.key });
       }
       dispatch({ type: 'add', line });
-      setRecentIds(pushRecentProduct(product.id));
       setOptionsFor(null);
       setEditing(null);
     },
@@ -211,6 +203,11 @@ export function OrderScreen({ table, role }: Props) {
 
   const editLine = useCallback(
     (line: CartLine) => {
+      if (isCustomLine(line.productId)) {
+        setCustomEditing(line);
+        setCustomOpen(true);
+        return;
+      }
       const product = productsById.get(line.productId);
       if (!product) return;
       setEditing({
@@ -220,6 +217,16 @@ export function OrderScreen({ table, role }: Props) {
       setOptionsFor(product);
     },
     [productsById],
+  );
+
+  const confirmCustom = useCallback(
+    (name: string, priceCents: number, quantity: number, note: string | null) => {
+      if (customEditing) dispatch({ type: 'remove', key: customEditing.key });
+      dispatch({ type: 'add', line: makeCustomLine(name, priceCents, quantity, note) });
+      setCustomOpen(false);
+      setCustomEditing(null);
+    },
+    [customEditing],
   );
 
   /**
@@ -239,12 +246,22 @@ export function OrderScreen({ table, role }: Props) {
       enqueue({
         tableId: table.id,
         tableLabel: table.label,
-        items: cart.lines.map((line) => ({
-          product_id: line.productId,
-          quantity: line.quantity,
-          option_ids: line.optionIds,
-          note: line.note,
-        })),
+        items: cart.lines.map((line) =>
+          isCustomLine(line.productId)
+            ? {
+                quantity: line.quantity,
+                option_ids: [],
+                note: line.note,
+                custom_name: line.name,
+                custom_price_cents: line.unitPriceCents,
+              }
+            : {
+                product_id: line.productId,
+                quantity: line.quantity,
+                option_ids: line.optionIds,
+                note: line.note,
+              },
+        ),
         note: cart.note.trim() || null,
         estimatedTotalCents: draftTotal,
         itemCount: draftCount,
@@ -340,7 +357,6 @@ export function OrderScreen({ table, role }: Props) {
     return t('order.inProgress', { amount: formatAmount(order.total_cents) });
   }, [order, table.seats, t]);
 
-  const showRecentTab = recentProducts.length > 0;
   const searching = query.trim().length > 0;
 
   return (
@@ -348,17 +364,16 @@ export function OrderScreen({ table, role }: Props) {
       {/* ------------------------------------------------------- en-tete --- */}
       <header className="pt-safe sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
         <div className="flex items-center gap-2 px-3 py-2.5">
-          <Link
-            href="/"
-            prefetch
-            onPointerDown={() => router.prefetch('/')}
+          <button
+            type="button"
+            onClick={() => router.push('/')}
             className="tap flex size-11 shrink-0 items-center justify-center rounded-xl text-ink active:bg-canvas"
             aria-label={t('order.back')}
           >
             <svg viewBox="0 0 24 24" className="size-6 rtl:rotate-180" fill="none" stroke="currentColor" strokeWidth="2.4">
               <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </Link>
+          </button>
 
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-extrabold leading-tight text-ink">
@@ -394,13 +409,6 @@ export function OrderScreen({ table, role }: Props) {
             </svg>
           </button>
           <div className="no-scrollbar snap-x-tabs flex min-w-0 flex-1 gap-2 overflow-x-auto">
-            {showRecentTab ? (
-              <CategoryTab
-                active={category === RECENT_TAB && !searching}
-                onClick={() => selectCategory(RECENT_TAB)}
-                label={t('order.recent')}
-              />
-            ) : null}
             {displayMenu.categories.map((c) => (
               <CategoryTab
                 key={c.id}
@@ -468,7 +476,7 @@ export function OrderScreen({ table, role }: Props) {
       ) : null}
 
       {/* ------------------------------------------------------ produits --- */}
-      <main className="flex-1 px-3 py-3 pb-32">
+      <main className="flex-1 px-3 py-3 pb-44">
         {menuLoading && menu.products.length === 0 ? (
           <div className="grid grid-cols-2 gap-2.5 min-[420px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-6">
             {Array.from({ length: 9 }, (_, i) => (
@@ -507,6 +515,19 @@ export function OrderScreen({ table, role }: Props) {
 
       {/* ------------------------------------------------- barre panier --- */}
       <div className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 px-3 pt-2.5 backdrop-blur">
+        <button
+          type="button"
+          onClick={() => {
+            setCustomEditing(null);
+            setCustomOpen(true);
+          }}
+          className="tap mb-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line text-sm font-bold text-ink-2 active:bg-canvas"
+        >
+          <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 6v12M6 12h12" strokeLinecap="round" />
+          </svg>
+          {t('order.custom')}
+        </button>
         <button
           type="button"
           onClick={() => setCartOpen(true)}
@@ -591,6 +612,16 @@ export function OrderScreen({ table, role }: Props) {
           setEditing(null);
         }}
         onConfirm={confirmOptions}
+      />
+
+      <CustomItemSheet
+        open={customOpen}
+        initial={customEditing}
+        onClose={() => {
+          setCustomOpen(false);
+          setCustomEditing(null);
+        }}
+        onConfirm={confirmCustom}
       />
     </div>
   );
