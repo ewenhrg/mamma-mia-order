@@ -2,12 +2,12 @@
 
 import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { ROSTER } from '@/lib/roster';
 import { signInAs, type SignInState } from './actions';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { Spinner } from '@/components/ui/Spinner';
 import { useI18n } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/messages';
+import type { LoginPerson } from '@/lib/roster';
 
 const INITIAL: SignInState = { error: null };
 
@@ -15,7 +15,7 @@ const INITIAL: SignInState = { error: null };
  * Un prenom, un tap. Pas de clavier, pas de mot de passe : en plein service
  * personne n'a le temps de taper une adresse email sur un telephone.
  */
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, people }: { next: string; people: LoginPerson[] }) {
   const { t } = useI18n();
   const [state, formAction] = useActionState(signInAs, INITIAL);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export function LoginForm({ next }: { next: string }) {
       )}
 
       <div className="grid grid-cols-2 gap-2.5">
-        {ROSTER.map((entry) => (
+        {people.map((entry) => (
           <NameButton
             key={entry.slug}
             slug={entry.slug}

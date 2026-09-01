@@ -1,8 +1,28 @@
+import { createClient } from '@supabase/supabase-js';
 import { LoginForm } from './LoginForm';
 import { LoginTagline } from './LoginTagline';
 import { SetupNotice } from '@/components/SetupNotice';
+import { buildLoginList, ROSTER } from '@/lib/roster';
+import type { Database } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Connexion — Mamma Mia' };
+
+async function loadLoginPeople() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return ROSTER.map(({ slug, name }) => ({ slug, name }));
+
+  try {
+    const admin = createClient<Database>(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data } = await admin.from('staff').select('full_name').eq('active', true);
+    return buildLoginList((data ?? []).map((row) => row.full_name));
+  } catch {
+    return ROSTER.map(({ slug, name }) => ({ slug, name }));
+  }
+}
 
 export default async function LoginPage({
   searchParams,
@@ -17,6 +37,8 @@ export default async function LoginPage({
   const configured =
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
+  const people = configured ? await loadLoginPeople() : [];
+
   return (
     <main className="pt-safe pb-safe flex min-h-[100dvh] flex-col justify-center bg-canvas px-5 py-10">
       <div className="mx-auto w-full max-w-sm">
@@ -28,7 +50,7 @@ export default async function LoginPage({
           <LoginTagline />
         </div>
 
-        {configured ? <LoginForm next={safeNext} /> : <SetupNotice />}
+        {configured ? <LoginForm next={safeNext} people={people} /> : <SetupNotice />}
       </div>
     </main>
   );

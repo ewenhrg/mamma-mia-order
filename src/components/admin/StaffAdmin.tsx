@@ -1,12 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Sheet } from '@/components/ui/Sheet';
 import { Spinner } from '@/components/ui/Spinner';
-import { EmptyState, ErrorNote, Toggle } from '@/components/admin/ui';
+import { EmptyState, ErrorNote, Field, PrimaryButton, Toggle, inputClass } from '@/components/admin/ui';
 import { StaffZonesSheet } from '@/components/admin/StaffZonesSheet';
+import { addTeamMember, listTeamDirectory, type PendingMember } from '@/app/admin/staff/actions';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeDbError } from '@/lib/adminErrors';
 import { useI18n } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/messages';
 import type { StaffRole, StaffRow, StaffZoneRow, ZoneRow } from '@/lib/types';
 
 export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: string; currentRole: StaffRole }) {
@@ -17,23 +20,28 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
     { value: 'admin', label: t('admin.role.admin'), hint: t('admin.role.adminHint') },
   ];
   const [staff, setStaff] = useState<StaffRow[]>([]);
+  const [pending, setPending] = useState<PendingMember[]>([]);
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [assignments, setAssignments] = useState<StaffZoneRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editing, setEditing] = useState<StaffRow | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const reload = useCallback(async () => {
     setError(null);
     const supabase = getSupabaseBrowser();
-    const [staffRes, zonesRes, assignRes] = await Promise.all([
-      supabase.from('staff').select('*').order('created_at'),
+    const [dir, zonesRes, assignRes] = await Promise.all([
+      listTeamDirectory(),
       supabase.from('zones').select('*').eq('active', true).order('sort_order'),
       supabase.from('staff_zones').select('*'),
     ]);
-    if (staffRes.error) setError(describeDbError(staffRes.error));
-    else setStaff(staffRes.data ?? []);
+    if (dir.error) setError(dir.error === 'MANAGER_REQUIRED' ? t('err.managerRequired') : dir.error);
+    else {
+      setStaff(dir.members);
+      setPending(dir.pending);
+    }
 
     if (zonesRes.error) setError(describeDbError(zonesRes.error));
     else setZones(zonesRes.data ?? []);
@@ -46,7 +54,7 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
       setAssignments(assignRes.data ?? []);
     }
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void reload();
@@ -80,13 +88,30 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
   }
 
   const canPromote = currentRole === 'admin';
+  const teamRows = useMemo(() => {
+    const rows: Array<{ kind: 'member'; member: StaffRow } | { kind: 'pending'; pending: PendingMember }> = [
+      ...staff.map((member) => ({ kind: 'member' as const, member })),
+      ...pending.map((row) => ({ kind: 'pending' as const, pending: row })),
+    ];
+    rows.sort((a, b) => {
+      const na = a.kind === 'member' ? a.member.full_name : a.pending.name;
+      const nb = b.kind === 'member' ? b.member.full_name : b.pending.name;
+      return na.localeCompare(nb, 'fr', { sensitivity: 'base' });
+    });
+    return rows;
+  }, [staff, pending]);
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-3">
-      <div className="rounded-2xl border border-line bg-surface p-4 text-sm leading-relaxed text-ink-2">
-        <p className="font-bold text-ink">{t('admin.addStaffTitle')}</p>
-        <p className="mt-1">{t('admin.addStaffBody')}</p>
-      </div>
+      <PrimaryButton onClick={() => setAddOpen(true)} className="w-full">
+        {t('admin.addStaff')}
+      </PrimaryButton>
+      <p className="px-1 text-sm text-ink-2">{t('admin.addStaffBody')}</p>
+      {teamRows.length > 0 ? (
+        <p className="px-1 text-xs font-semibold text-muted">
+          {t('admin.teamCount', { n: teamRows.length })}
+        </p>
+      ) : null}
 
       <ErrorNote message={error} />
 
@@ -94,11 +119,32 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
         <div className="flex justify-center py-12 text-muted">
           <Spinner className="size-6" />
         </div>
-      ) : staff.length === 0 ? (
+      ) : teamRows.length === 0 ? (
         <EmptyState text={t('admin.noStaff')} />
       ) : (
         <ul className="space-y-2">
-          {staff.map((member) => {
+          {teamRows.map((row) => {
+            if (row.kind === 'pending') {
+              const person = row.pending;
+              return (
+                <li key={`pending-${person.slug}`} className="rounded-2xl border border-dashed border-line bg-surface p-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-canvas text-base font-extrabold text-ink">
+                      {person.name.slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[15px] font-bold leading-tight text-ink">{person.name}</p>
+                      <p className="truncate text-xs text-muted">
+                        {t('admin.staffPending')} · {ROLES.find((r) => r.value === person.role)?.label}
+                      </p>
+                      <p className="truncate text-xs text-ink-2">{t('admin.staffPendingHint')}</p>
+                    </div>
+                  </div>
+                </li>
+              );
+            }
+
+            const member = row.member;
             const isSelf = member.id === currentUserId;
             const assigned = zonesByStaff.get(member.id) ?? [];
             const zoneLabel =
@@ -185,6 +231,109 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
         onClose={() => setEditing(null)}
         onSaved={() => void reload()}
       />
+
+      <AddStaffSheet
+        open={addOpen}
+        canPickRole={canPromote}
+        roles={ROLES}
+        onClose={() => setAddOpen(false)}
+        onSaved={() => void reload()}
+      />
     </div>
   );
+}
+
+function AddStaffSheet({
+  open,
+  canPickRole,
+  roles,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  canPickRole: boolean;
+  roles: { value: StaffRole; label: string }[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useI18n();
+  const [name, setName] = useState('');
+  const [role, setRole] = useState<StaffRole>('server');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setName('');
+    setRole('server');
+    setError(null);
+  }, [open]);
+
+  async function save() {
+    setPending(true);
+    setError(null);
+    const result = await addTeamMember(name, role);
+    setPending(false);
+    if (!result.ok) {
+      setError(staffAddError(result.error, t));
+      return;
+    }
+    onSaved();
+    onClose();
+  }
+
+  if (!open) return null;
+
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title={t('admin.addStaffTitle')}
+      subtitle={t('admin.addStaffBody')}
+      footer={
+        <PrimaryButton onClick={() => void save()} pending={pending} className="w-full">
+          {t('admin.save')}
+        </PrimaryButton>
+      }
+    >
+      <div className="space-y-4 p-4">
+        <ErrorNote message={error} />
+        <Field label={t('admin.staffName')} hint={t('admin.staffNameHint')}>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoComplete="off"
+            autoCapitalize="words"
+            className={inputClass}
+          />
+        </Field>
+        {canPickRole ? (
+          <div className="grid grid-cols-3 gap-2">
+            {roles.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setRole(item.value)}
+                className={`tap h-12 rounded-xl border text-sm font-bold ${
+                  role === item.value
+                    ? 'border-brand bg-brand-soft text-brand'
+                    : 'border-line bg-surface text-ink-2'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </Sheet>
+  );
+}
+
+function staffAddError(code: string, t: (key: MessageKey) => string): string {
+  if (code === 'DUP_NAME') return t('admin.DUP_NAME');
+  if (code === 'INVALID_NAME') return t('admin.INVALID_NAME');
+  if (code === 'MANAGER_REQUIRED') return t('err.managerRequired');
+  if (code === 'MISSING_CONFIG') return t('login.MISSING_CONFIG');
+  return code;
 }

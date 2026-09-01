@@ -2,9 +2,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
-import { findRosterEntry, rosterEmail } from '@/lib/roster';
+import { findRosterEntry, nameToSlug, rosterEmail } from '@/lib/roster';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import type { Database } from '@/lib/types';
+import type { Database, StaffRole } from '@/lib/types';
 
 export type SignInState = { error: null | string };
 
@@ -18,7 +18,7 @@ export type SignInState = { error: null | string };
  */
 export async function signInAs(_prev: SignInState, formData: FormData): Promise<SignInState> {
   const slug = String(formData.get('slug') ?? '');
-  const entry = findRosterEntry(slug);
+  const entry = await resolveLogin(slug);
   if (!entry) return { error: 'UNKNOWN_NAME' };
 
   const requested = String(formData.get('next') ?? '/');
@@ -77,6 +77,25 @@ export async function signInAs(_prev: SignInState, formData: FormData): Promise<
 }
 
 type AdminClient = ReturnType<typeof createClient<Database>>;
+
+async function resolveLogin(
+  slug: string,
+): Promise<{ slug: string; name: string; role: StaffRole } | null> {
+  const roster = findRosterEntry(slug);
+  if (roster) return roster;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return null;
+
+  const admin = createClient<Database>(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data } = await admin.from('staff').select('full_name, role, active');
+  const match = (data ?? []).find((row) => row.active && nameToSlug(row.full_name) === slug);
+  if (!match) return null;
+  return { slug, name: match.full_name, role: match.role };
+}
 
 /** Renvoie un message d'erreur, ou null si tout va bien. */
 async function ensureStaff(

@@ -8,12 +8,14 @@ export type RosterEntry = {
   role: StaffRole;
 };
 
+export type LoginPerson = {
+  slug: string;
+  name: string;
+};
+
 /**
- * Equipe du restaurant. Aucun mot de passe : on choisit son prenom et on entre.
- *
- * Ajouter quelqu'un = ajouter une ligne ici. Le compte technique associe est
- * cree automatiquement a la premiere connexion ; le role peut ensuite etre
- * change dans Admin > Equipe sans toucher a ce fichier.
+ * Equipe de base, toujours proposee a la connexion.
+ * Les gens ajoutes depuis Admin > Equipe viennent en plus, sans toucher a ce fichier.
  */
 export const ROSTER: RosterEntry[] = [
   { slug: 'ewen', name: 'Ewen', role: 'admin' },
@@ -25,8 +27,33 @@ export const ROSTER: RosterEntry[] = [
   { slug: 'emir', name: 'Emir', role: 'server' },
 ];
 
+const COMBINING_MARKS = new RegExp(`[${String.fromCharCode(0x300)}-${String.fromCharCode(0x36f)}]`, 'g');
+
+/** Prenom → identifiant de connexion : « Léa » → lea. */
+export function nameToSlug(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(COMBINING_MARKS, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export function findRosterEntry(slug: string): RosterEntry | undefined {
   return ROSTER.find((entry) => entry.slug === slug);
+}
+
+export function buildLoginList(staffNames: string[]): LoginPerson[] {
+  const seen = new Set(ROSTER.map((entry) => entry.slug));
+  const extra: LoginPerson[] = [];
+  for (const name of staffNames) {
+    const slug = nameToSlug(name);
+    if (!slug || seen.has(slug)) continue;
+    seen.add(slug);
+    extra.push({ slug, name });
+  }
+  extra.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+  return [...ROSTER.map(({ slug, name }) => ({ slug, name })), ...extra];
 }
 
 /**
