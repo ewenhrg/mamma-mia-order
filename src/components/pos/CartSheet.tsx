@@ -7,6 +7,8 @@ import { formatAmount } from '@/lib/money';
 import { formatElapsed } from '@/lib/time';
 import { cartItemCount, cartTotalCents, type CartAction, type CartLine } from '@/lib/cart';
 import type { OrderItemRow, OrderRow, StaffRole } from '@/lib/types';
+import { useI18n } from '@/lib/i18n';
+import { translateMenuName } from '@/lib/menuI18n';
 
 type Props = {
   open: boolean;
@@ -52,6 +54,7 @@ export function CartSheet({
   onMarkPaid,
   onReleaseTable,
 }: Props) {
+  const { t, locale } = useI18n();
   const [tab, setTab] = useState<'cart' | 'requested' | 'sent'>('cart');
 
   const draftTotal = useMemo(() => cartTotalCents(lines), [lines]);
@@ -79,18 +82,18 @@ export function CartSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title={`Table ${tableLabel}`}
+      title={t('cart.title', { label: tableLabel })}
       subtitle={
         order
-          ? `Commande #${order.order_number} · ouverte il y a ${formatElapsed(order.created_at)}`
-          : 'Nouvelle commande'
+          ? t('cart.subtitleOpen', { n: order.order_number, ago: formatElapsed(order.created_at) })
+          : t('cart.subtitleNew')
       }
       footer={
         tab === 'cart' ? (
           <div className="space-y-2">
             <div className="flex items-baseline justify-between px-1">
               <span className="text-sm font-semibold text-ink-2">
-                {order ? 'Total table' : 'Total'}
+                {order ? t('cart.tableTotal') : t('cart.total')}
               </span>
               <span className="text-xl font-extrabold tabular-nums text-ink">
                 {formatAmount(tableTotal)} EGP
@@ -104,10 +107,10 @@ export function CartSheet({
             >
               {submitting ? <Spinner className="size-5" /> : null}
               {submitting
-                ? 'Envoi…'
+                ? t('cart.sending')
                 : lines.length === 0
-                  ? 'Panier vide'
-                  : `Envoyer ${draftCount} article${draftCount > 1 ? 's' : ''}`}
+                  ? t('cart.empty')
+                  : t('cart.sendN', { n: draftCount })}
             </button>
           </div>
         ) : tab === 'requested' ? (
@@ -119,10 +122,10 @@ export function CartSheet({
           >
             {accepting ? <Spinner className="size-5" /> : null}
             {accepting
-              ? 'Validation…'
+              ? t('cart.validating')
               : requestedCount === 0
-                ? 'Rien a valider'
-                : `Valider et envoyer ${requestedCount} article${requestedCount > 1 ? 's' : ''}`}
+                ? t('cart.nothing')
+                : t('cart.acceptN', { n: requestedCount })}
           </button>
         ) : order ? (
           <PaymentActions order={order} onMarkPaid={onMarkPaid} onReleaseTable={onReleaseTable} />
@@ -131,24 +134,24 @@ export function CartSheet({
     >
       {/* ------------------------------------------------------- onglets --- */}
       <div className="sticky top-0 z-10 flex gap-2 border-b border-line bg-surface px-4 py-2.5">
-        <TabButton active={tab === 'cart'} onClick={() => setTab('cart')} label="Panier" count={draftCount} />
+        <TabButton active={tab === 'cart'} onClick={() => setTab('cart')} label={t('cart.tabCart')} count={draftCount} />
         {requestedCount > 0 ? (
           <TabButton
             active={tab === 'requested'}
             onClick={() => setTab('requested')}
-            label="Demandee"
+            label={t('cart.tabRequested')}
             count={requestedCount}
             highlight
           />
         ) : null}
-        <TabButton active={tab === 'sent'} onClick={() => setTab('sent')} label="Envoye" count={sentCount} />
+        <TabButton active={tab === 'sent'} onClick={() => setTab('sent')} label={t('cart.tabSent')} count={sentCount} />
       </div>
 
       {tab === 'cart' ? (
         <div className="p-4">
           {lines.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted">
-              Panier vide. Tape un produit pour l&apos;ajouter.
+              {t('cart.emptyHint')}
             </p>
           ) : (
             <ul className="space-y-2">
@@ -159,10 +162,12 @@ export function CartSheet({
                 >
                   <div className="flex items-start gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-bold leading-tight text-ink">{line.name}</p>
+                      <p className="text-[15px] font-bold leading-tight text-ink">
+                        {translateMenuName(line.name, locale)}
+                      </p>
                       {line.optionLabels.length > 0 ? (
                         <p className="mt-0.5 text-xs leading-snug text-muted">
-                          {line.optionLabels.join(' · ')}
+                          {line.optionLabels.map((label) => translateMenuName(label, locale)).join(' · ')}
                         </p>
                       ) : null}
                       {line.note ? (
@@ -179,7 +184,7 @@ export function CartSheet({
                   <div className="mt-2.5 flex items-center gap-2">
                     <div className="flex h-12 items-center gap-1 rounded-xl border border-line px-1">
                       <QtyButton
-                        label="Retirer un"
+                        label={t('cart.removeOne')}
                         onClick={() => dispatch({ type: 'decrement', key: line.key })}
                       >
                         {line.quantity <= 1 ? (
@@ -196,7 +201,7 @@ export function CartSheet({
                         {line.quantity}
                       </span>
                       <QtyButton
-                        label="Ajouter un"
+                        label={t('cart.addOne')}
                         onClick={() => dispatch({ type: 'increment', key: line.key })}
                       >
                         <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="3">
@@ -210,13 +215,13 @@ export function CartSheet({
                       onClick={() => onEditLine(line)}
                       className="tap h-12 flex-1 rounded-xl border border-line text-sm font-semibold text-ink-2 active:bg-canvas"
                     >
-                      Note
+                      {t('cart.note')}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => dispatch({ type: 'remove', key: line.key })}
-                      aria-label={`Supprimer ${line.name}`}
+                      aria-label={t('cart.deleteLine', { name: translateMenuName(line.name, locale) })}
                       className="tap flex size-12 items-center justify-center rounded-xl border border-line text-alert active:bg-alert-soft"
                     >
                       <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -231,14 +236,14 @@ export function CartSheet({
 
           <div className="mt-4">
             <label htmlFor="order-note" className="mb-1.5 block text-sm font-bold text-ink-2">
-              Note pour la table
+              {t('cart.tableNote')}
             </label>
             <textarea
               id="order-note"
               rows={2}
               value={note}
               onChange={(e) => dispatch({ type: 'setNote', note: e.target.value.slice(0, 500) })}
-              placeholder="Anniversaire, service groupe…"
+              placeholder={t('cart.tableNotePh')}
               className="w-full resize-none rounded-2xl border border-line bg-surface px-4 py-3 text-ink outline-none placeholder:text-muted/70 focus:border-brand focus:ring-4 focus:ring-brand/15"
             />
           </div>
@@ -247,11 +252,11 @@ export function CartSheet({
             <button
               type="button"
               onClick={() => {
-                if (window.confirm('Vider le panier ?')) dispatch({ type: 'clear' });
+                if (window.confirm(t('cart.clearConfirm'))) dispatch({ type: 'clear' });
               }}
               className="tap mt-3 h-12 w-full rounded-2xl text-sm font-semibold text-alert active:bg-alert-soft"
             >
-              Vider le panier
+              {t('cart.clear')}
             </button>
           ) : null}
         </div>
@@ -281,6 +286,7 @@ function PaymentActions({
   onMarkPaid: () => void;
   onReleaseTable: () => void;
 }) {
+  const { t } = useI18n();
   const remaining = Math.max(order.total_cents - order.paid_amount_cents, 0);
   const paid = order.paid_at !== null;
 
@@ -291,7 +297,7 @@ function PaymentActions({
         onClick={onMarkPaid}
         className="tap-strong flex h-16 w-full items-center justify-between rounded-2xl bg-ink px-5 text-lg font-extrabold text-white"
       >
-        <span>Encaisser</span>
+        <span>{t('cart.pay')}</span>
         <span className="tabular-nums">{formatAmount(order.total_cents)} EGP</span>
       </button>
     );
@@ -301,7 +307,7 @@ function PaymentActions({
     <div className="space-y-2">
       <div className="flex items-center justify-between rounded-2xl bg-free-soft px-4 py-2.5">
         <span className="text-sm font-bold text-free">
-          Encaissee il y a {formatElapsed(order.paid_at!)}
+          {t('cart.paidAgo', { ago: formatElapsed(order.paid_at!) })}
         </span>
         <span className="text-sm font-extrabold tabular-nums text-free">
           {formatAmount(order.paid_amount_cents)}
@@ -314,7 +320,7 @@ function PaymentActions({
           onClick={onMarkPaid}
           className="tap-strong flex h-16 w-full items-center justify-between rounded-2xl bg-alert px-5 text-lg font-extrabold text-white"
         >
-          <span>Encaisser le complement</span>
+          <span>{t('cart.payRest')}</span>
           <span className="tabular-nums">{formatAmount(remaining)} EGP</span>
         </button>
       ) : (
@@ -323,7 +329,7 @@ function PaymentActions({
           onClick={onReleaseTable}
           className="tap flex h-14 w-full items-center justify-center rounded-2xl border-2 border-ink font-bold text-ink active:bg-canvas"
         >
-          Liberer la table
+          {t('cart.release')}
         </button>
       )}
     </div>
@@ -337,6 +343,7 @@ function RequestedItems({
   items: OrderItemRow[];
   onVoidItem: (itemId: string) => void;
 }) {
+  const { t, locale } = useI18n();
   const batches = useMemo(() => {
     const map = new Map<string, OrderItemRow[]>();
     for (const item of items) {
@@ -350,7 +357,7 @@ function RequestedItems({
   if (items.length === 0) {
     return (
       <p className="p-6 py-10 text-center text-sm text-muted">
-        Aucune commande client en attente.
+        {t('cart.noRequested')}
       </p>
     );
   }
@@ -358,14 +365,13 @@ function RequestedItems({
   return (
     <div className="space-y-4 p-4">
       <p className="rounded-2xl bg-brand-soft px-4 py-3 text-sm font-semibold leading-snug text-brand">
-        Le client a demande ces articles. Verifie, retire ce qui ne va pas, puis
-        valide pour envoyer en cuisine.
+        {t('cart.requestedHint')}
       </p>
 
       {batches.map((batch) => (
         <section key={batch[0].batch_id}>
           <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-brand">
-            Demandee il y a {formatElapsed(batch[0].created_at)}
+            {t('cart.requestedAgo', { ago: formatElapsed(batch[0].created_at) })}
           </h3>
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-brand/25 bg-surface">
             {batch.map((item) => (
@@ -374,10 +380,12 @@ function RequestedItems({
                   {item.quantity}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-bold leading-tight text-ink">{item.name_snapshot}</p>
+                  <p className="text-[15px] font-bold leading-tight text-ink">
+                    {translateMenuName(item.name_snapshot, locale)}
+                  </p>
                   {item.options_snapshot.length > 0 ? (
                     <p className="mt-0.5 text-xs text-muted">
-                      {item.options_snapshot.map((o) => o.name).join(' · ')}
+                      {item.options_snapshot.map((o) => translateMenuName(o.name, locale)).join(' · ')}
                     </p>
                   ) : null}
                   {item.note ? (
@@ -392,11 +400,18 @@ function RequestedItems({
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm(`Retirer ${item.quantity} x ${item.name_snapshot} ?`)) {
+                    if (
+                      window.confirm(
+                        t('cart.removeLine', {
+                          n: item.quantity,
+                          name: translateMenuName(item.name_snapshot, locale),
+                        }),
+                      )
+                    ) {
                       onVoidItem(item.id);
                     }
                   }}
-                  aria-label="Retirer cette ligne"
+                  aria-label={t('cart.removeAria')}
                   className="tap -my-1 flex size-9 shrink-0 items-center justify-center rounded-lg text-alert active:bg-alert-soft"
                 >
                   <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -423,6 +438,7 @@ function SentItems({
   role: StaffRole;
   onVoidItem: (itemId: string) => void;
 }) {
+  const { t, locale } = useI18n();
   // Un envoi = un batch = un bon de cuisine. Les regrouper permet au serveur
   // de savoir ce qui est parti quand.
   const batches = useMemo(() => {
@@ -438,7 +454,7 @@ function SentItems({
   const canVoid = role === 'manager' || role === 'admin';
 
   if (!order || items.length === 0) {
-    return <p className="p-6 py-10 text-center text-sm text-muted">Rien n&apos;a encore ete envoye.</p>;
+    return <p className="p-6 py-10 text-center text-sm text-muted">{t('cart.nothingSent')}</p>;
   }
 
   return (
@@ -446,7 +462,7 @@ function SentItems({
       {batches.map((batch) => (
         <section key={batch[0].batch_id}>
           <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">
-            Envoye il y a {formatElapsed(batch[0].sent_at ?? batch[0].created_at)}
+            {t('cart.sentAgo', { ago: formatElapsed(batch[0].sent_at ?? batch[0].created_at) })}
           </h3>
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
             {batch.map((item) => (
@@ -455,15 +471,17 @@ function SentItems({
                   {item.quantity}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-bold leading-tight text-ink">{item.name_snapshot}</p>
+                  <p className="text-[15px] font-bold leading-tight text-ink">
+                    {translateMenuName(item.name_snapshot, locale)}
+                  </p>
                   {item.options_snapshot.length > 0 ? (
                     <p className="mt-0.5 text-xs text-muted">
-                      {item.options_snapshot.map((o) => o.name).join(' · ')}
+                      {item.options_snapshot.map((o) => translateMenuName(o.name, locale)).join(' · ')}
                     </p>
                   ) : null}
                   {item.from_guest ? (
                     <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-brand">
-                      Client
+                      {t('cart.client')}
                     </p>
                   ) : null}
                   {item.note ? (
@@ -479,11 +497,18 @@ function SentItems({
                   <button
                     type="button"
                     onClick={() => {
-                      if (window.confirm(`Annuler ${item.quantity} x ${item.name_snapshot} ?`)) {
+                      if (
+                        window.confirm(
+                          t('cart.voidLine', {
+                            n: item.quantity,
+                            name: translateMenuName(item.name_snapshot, locale),
+                          }),
+                        )
+                      ) {
                         onVoidItem(item.id);
                       }
                     }}
-                    aria-label="Annuler cette ligne"
+                    aria-label={t('cart.voidAria')}
                     className="tap -my-1 flex size-9 shrink-0 items-center justify-center rounded-lg text-alert active:bg-alert-soft"
                   >
                     <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -498,12 +523,12 @@ function SentItems({
       ))}
 
       <dl className="rounded-2xl border border-line bg-surface p-4 text-sm">
-        <Row label="Sous-total" value={formatAmount(order.subtotal_cents)} />
+        <Row label={t('cart.subtotal')} value={formatAmount(order.subtotal_cents)} />
         {order.discount_cents > 0 ? (
-          <Row label="Remise" value={`-${formatAmount(order.discount_cents)}`} />
+          <Row label={t('cart.discount')} value={`-${formatAmount(order.discount_cents)}`} />
         ) : null}
         <div className="mt-2 border-t border-line pt-2">
-          <Row label="Total" value={`${formatAmount(order.total_cents)} EGP`} strong />
+          <Row label={t('cart.grandTotal')} value={`${formatAmount(order.total_cents)} EGP`} strong />
         </div>
       </dl>
     </div>

@@ -2,19 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-
-const LINKS = [
-  { href: '/admin/menu', label: 'Menu' },
-  { href: '/admin/tables', label: 'Tables' },
-  { href: '/admin/staff', label: 'Equipe' },
-];
+import { useI18n } from '@/lib/i18n';
 
 export function AdminNav() {
   const pathname = usePathname();
+  const { t } = useI18n();
+  const links = [
+    { href: '/admin/menu', label: t('admin.nav.menu') },
+    { href: '/admin/tables', label: t('admin.nav.tables') },
+    { href: '/admin/staff', label: t('admin.nav.staff') },
+  ];
 
   return (
     <nav className="no-scrollbar flex gap-2 overflow-x-auto px-3 pb-2.5">
-      {LINKS.map((link) => {
+      {links.map((link) => {
         const active = pathname.startsWith(link.href);
         return (
           <Link

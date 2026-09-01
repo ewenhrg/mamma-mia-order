@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useI18n } from '@/lib/i18n';
 
 type SheetProps = {
   open: boolean;
@@ -28,6 +29,7 @@ export function Sheet({
   footer,
   maxHeight = '88dvh',
 }: SheetProps) {
+  const { t } = useI18n();
   useEffect(() => {
     if (!open) return;
 
@@ -52,7 +54,7 @@ export function Sheet({
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <button
         type="button"
-        aria-label="Fermer"
+        aria-label={t('sheet.close')}
         onClick={onClose}
         className="animate-fade absolute inset-0 bg-ink/45"
       />
@@ -74,7 +76,7 @@ export function Sheet({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Fermer"
+              aria-label={t('sheet.close')}
               className="tap -mr-1 -mt-1 flex size-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-canvas"
             >
               <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2.2">

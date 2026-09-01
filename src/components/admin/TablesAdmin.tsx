@@ -16,6 +16,7 @@ import {
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeDbError } from '@/lib/adminErrors';
 import { guestOrderUrl, guestQrImageUrl } from '@/lib/guest';
+import { useI18n } from '@/lib/i18n';
 import type { RestaurantTableRow, ZoneRow } from '@/lib/types';
 
 const ZONE_COLORS = ['#C8102E', '#EA580C', '#F59E0B', '#16A34A', '#0891B2', '#2563EB', '#7C3AED', '#0B0D12'];
@@ -23,6 +24,7 @@ const ZONE_COLORS = ['#C8102E', '#EA580C', '#F59E0B', '#16A34A', '#0891B2', '#25
 type Tab = 'tables' | 'zones';
 
 export function TablesAdmin() {
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>('tables');
   const [tables, setTables] = useState<RestaurantTableRow[]>([]);
   const [zones, setZones] = useState<ZoneRow[]>([]);
@@ -52,8 +54,8 @@ export function TablesAdmin() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-3">
       <div className="grid grid-cols-2 gap-2">
-        <TabButton active={tab === 'tables'} onClick={() => setTab('tables')} label="Tables" />
-        <TabButton active={tab === 'zones'} onClick={() => setTab('zones')} label="Zones" />
+        <TabButton active={tab === 'tables'} onClick={() => setTab('tables')} label={t('admin.tables')} />
+        <TabButton active={tab === 'zones'} onClick={() => setTab('zones')} label={t('admin.zones')} />
       </div>
 
       <ErrorNote message={error} />
@@ -83,6 +85,7 @@ function TablesTab({
   reload: () => void;
   onError: (message: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState<RestaurantTableRow | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [qrTable, setQrTable] = useState<RestaurantTableRow | null>(null);
@@ -124,7 +127,7 @@ function TablesTab({
         href="/admin/tables/qr"
         className="tap flex h-14 w-full items-center justify-center rounded-2xl bg-brand px-5 font-bold text-white shadow-lg shadow-brand/25 active:bg-brand-dark"
       >
-        QR codes clients
+        {t('admin.qrCodes')}
       </Link>
 
       <div className="grid grid-cols-2 gap-2">
@@ -135,17 +138,17 @@ function TablesTab({
           }}
           disabled={zones.length === 0}
         >
-          + Une table
+          {t('admin.addTable')}
         </PrimaryButton>
         <GhostButton type="button" onClick={() => setBulkOpen(true)} disabled={zones.length === 0}>
-          Creer en serie
+          {t('admin.bulk')}
         </GhostButton>
       </div>
 
       {zones.length === 0 ? (
-        <EmptyState text="Cree d'abord une zone." />
+        <EmptyState text={t('admin.needZone')} />
       ) : tables.length === 0 ? (
-        <EmptyState text="Aucune table." />
+        <EmptyState text={t('admin.noTable')} />
       ) : (
         <ul className="overflow-hidden rounded-2xl border border-line bg-surface">
           {tables.map((table) => {
@@ -163,7 +166,7 @@ function TablesTab({
                     <p className="truncate text-[15px] font-bold leading-tight text-ink">
                       {zone?.name ?? '—'}
                     </p>
-                    <p className="text-xs text-muted">{table.seats} places</p>
+                    <p className="text-xs text-muted">{t('table.seats', { n: table.seats })}</p>
                   </div>
                   {busyId === table.id ? <Spinner className="size-5 text-muted" /> : null}
                   <Toggle
@@ -190,14 +193,14 @@ function TablesTab({
                     }}
                     className="tap flex h-12 items-center justify-center rounded-xl border border-line text-sm font-semibold text-ink-2"
                   >
-                    Modifier
+                    {t('admin.edit')}
                   </button>
                   <button
                     type="button"
                     onClick={() => void remove(table)}
                     className="tap flex h-12 items-center justify-center rounded-xl border border-line text-sm font-semibold text-alert"
                   >
-                    Supprimer
+                    {t('admin.delete')}
                   </button>
                 </div>
               </li>

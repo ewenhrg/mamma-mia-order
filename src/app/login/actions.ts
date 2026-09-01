@@ -19,7 +19,7 @@ export type SignInState = { error: null | string };
 export async function signInAs(_prev: SignInState, formData: FormData): Promise<SignInState> {
   const slug = String(formData.get('slug') ?? '');
   const entry = findRosterEntry(slug);
-  if (!entry) return { error: 'Prenom inconnu.' };
+  if (!entry) return { error: 'UNKNOWN_NAME' };
 
   const requested = String(formData.get('next') ?? '/');
   const next = requested.startsWith('/') && !requested.startsWith('//') ? requested : '/';
@@ -27,10 +27,7 @@ export async function signInAs(_prev: SignInState, formData: FormData): Promise<
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
-    return {
-      error:
-        'Configuration incomplete : ajoute SUPABASE_SERVICE_ROLE_KEY dans .env.local (Supabase > Project Settings > API), puis relance le serveur.',
-    };
+    return { error: 'MISSING_CONFIG' };
   }
 
   const admin = createClient<Database>(url, serviceKey, {

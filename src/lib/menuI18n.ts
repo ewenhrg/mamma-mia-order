@@ -1,0 +1,217 @@
+import { normalize } from '@/lib/menu';
+import type { Locale } from '@/lib/messages';
+import type { Menu, MenuProduct } from '@/lib/types';
+
+const CATEGORY_EN: Record<string, string> = {
+  Entrées: 'Starters',
+  Sandwiches: 'Sandwiches',
+  Pasta: 'Pasta',
+  Plats: 'Mains',
+  Pizza: 'Pizza',
+  Desserts: 'Desserts',
+  Pancakes: 'Pancakes',
+  'Soft drinks': 'Soft drinks',
+  'Jus frais': 'Fresh juices',
+  Smoothies: 'Smoothies',
+  Milkshakes: 'Milkshakes',
+  'Cocktails frais': 'Fresh cocktails',
+  Mojitos: 'Mojitos',
+};
+
+const PRODUCT_EN: Record<string, string> = {
+  'Calamars frits': 'Fried calamari',
+  'Ailes de poulet': 'Chicken wings',
+  'Fingers de poulet': 'Chicken fingers',
+  'Samoussa au fromage': 'Cheese samosa',
+  'Crevettes tempura': 'Tempura shrimp',
+  'Burger au fromage': 'Cheeseburger',
+  'Sandwich poulet frit': 'Fried chicken sandwich',
+  'Sandwich saumon fumé': 'Smoked salmon sandwich',
+  'Wrap poulet': 'Chicken wrap',
+  'Sandwich crevettes frites': 'Fried shrimp sandwich',
+  'Penne arrabiata': 'Penne arrabbiata',
+  'Penne alfredo': 'Penne alfredo',
+  'Spaghetti bolognese': 'Spaghetti bolognese',
+  'Fettuccine carbonara': 'Fettuccine carbonara',
+  'Spaghetti fruits de mer': 'Seafood spaghetti',
+  'Poulet grillé': 'Grilled chicken',
+  'Filet de boeuf': 'Beef fillet',
+  'Grillades mixtes': 'Mixed grill',
+  'Pavé de saumon': 'Salmon steak',
+  'Fruits de mer mix': 'Mixed seafood',
+  'Calamars frits mix': 'Fried seafood mix',
+  'Crevettes grillées': 'Grilled shrimp',
+  'Pizza margherita': 'Margherita pizza',
+  'Pizza salami': 'Salami pizza',
+  'Pizza fruits de mer': 'Seafood pizza',
+  'Pizza quattro formaggi': 'Quattro formaggi pizza',
+  'Pizza poulet BBQ': 'BBQ chicken pizza',
+  Cheesecake: 'Cheesecake',
+  'Gâteau au chocolat': 'Chocolate cake',
+  'Moelleux chocolat glace': 'Chocolate lava cake',
+  'Salade de fruits': 'Fruit salad',
+  'Assiette de fruits mixte': 'Mixed fruit plate',
+  'Pancake Nutella': 'Nutella pancake',
+  'Pancake Nutella fruits': 'Nutella pancake with fruit',
+  'Pancake Nutella nuts': 'Nutella pancake with nuts',
+  'Pancake caramel': 'Caramel pancake',
+  'Pancake caramel fruits': 'Caramel pancake with fruit',
+  'Pancake caramel nuts': 'Caramel pancake with nuts',
+  'Mini pancakes': 'Mini pancakes',
+  'Petite eau': 'Small water',
+  'Grande eau': 'Large water',
+  'Thé glacé': 'Iced tea',
+  'Coca-Cola': 'Coca-Cola',
+  Fanta: 'Fanta',
+  Sprite: 'Sprite',
+  Pepsi: 'Pepsi',
+  Schweppes: 'Schweppes',
+  Tonic: 'Tonic',
+  Birell: 'Birell',
+  'Red Bull': 'Red Bull',
+  'Jus mangue': 'Mango juice',
+  'Jus fraise': 'Strawberry juice',
+  'Jus goyave': 'Guava juice',
+  'Jus orange': 'Orange juice',
+  'Jus pastèque': 'Watermelon juice',
+  'Jus melon': 'Melon juice',
+  'Jus ananas': 'Pineapple juice',
+  'Jus pêche': 'Peach juice',
+  'Jus citron': 'Lemon juice',
+  'Jus citron menthe': 'Lemon mint juice',
+  'Jus avocat': 'Avocado juice',
+  'Jus pomme': 'Apple juice',
+  'Smoothie mangue': 'Mango smoothie',
+  'Smoothie fraise': 'Strawberry smoothie',
+  'Smoothie goyave': 'Guava smoothie',
+  'Smoothie pastèque': 'Watermelon smoothie',
+  'Smoothie pêche': 'Peach smoothie',
+  'Smoothie citron': 'Lemon smoothie',
+  'Smoothie citron menthe': 'Lemon mint smoothie',
+  'Smoothie ananas': 'Pineapple smoothie',
+  'Smoothie myrtille': 'Blueberry smoothie',
+  'Smoothie kiwi': 'Kiwi smoothie',
+  'Smoothie piña colada': 'Piña colada smoothie',
+  'Smoothie mangue kiwi': 'Mango kiwi smoothie',
+  'Smoothie passion': 'Passion fruit smoothie',
+  'Milkshake mangue': 'Mango milkshake',
+  'Milkshake fraise': 'Strawberry milkshake',
+  'Milkshake vanille': 'Vanilla milkshake',
+  'Milkshake caramel': 'Caramel milkshake',
+  'Milkshake chocolat': 'Chocolate milkshake',
+  'Milkshake Nutella': 'Nutella milkshake',
+  'Milkshake Lotus': 'Lotus milkshake',
+  'Milkshake pistache': 'Pistachio milkshake',
+  'Milkshake myrtille': 'Blueberry milkshake',
+  'Milkshake passion': 'Passion fruit milkshake',
+  'Milkshake Oreo': 'Oreo milkshake',
+  Florida: 'Florida',
+  'Vitamine C': 'Vitamin C',
+  Hawaii: 'Hawaii',
+  Kiango: 'Kiango',
+  Montana: 'Montana',
+  Rose: 'Rose',
+  'Cocktail Mamma Mia': 'Mamma Mia cocktail',
+  'Mojito classic': 'Classic mojito',
+  'Mojito fraise': 'Strawberry mojito',
+  'Mojito ananas': 'Pineapple mojito',
+  'Mojito pastèque': 'Watermelon mojito',
+  'Mojito kiwi': 'Kiwi mojito',
+  'Mojito passion': 'Passion fruit mojito',
+  'Mojito cerise cola': 'Cherry cola mojito',
+  'Mojito Blue Mountain': 'Blue Mountain mojito',
+  'Mojito Sunshine': 'Sunshine mojito',
+  'Mojito Scotch Mint': 'Scotch mint mojito',
+  'Mojito Mamma Mia': 'Mamma Mia mojito',
+};
+
+const DESC_EN: Record<string, string> = {
+  'Calamars marinés frits, sauce sweet chili': 'Marinated fried calamari, sweet chili sauce',
+  'Ailes croustillantes, sauce au choix': 'Crispy wings, sauce of your choice',
+  'Filets de poulet panés et croustillants': 'Breaded crispy chicken fillets',
+  'Samoussas frits, fromage et menthe fraîche': 'Fried samosas, cheese and fresh mint',
+  'Crevettes tempura, sauce sweet chili': 'Tempura shrimp, sweet chili sauce',
+  'Boeuf, fromage fondu, laitue, tomate, mayonnaise': 'Beef, melted cheese, lettuce, tomato, mayonnaise',
+  'Poulet frit, fromage fondu, laitue, mayonnaise': 'Fried chicken, melted cheese, lettuce, mayonnaise',
+  'Saumon fumé, câpres, oignons, laitue, pesto mayo': 'Smoked salmon, capers, onions, lettuce, pesto mayo',
+  'Poulet croustillant, légumes frais, fromage': 'Crispy chicken, fresh vegetables, cheese',
+  'Crevettes frites, laitue, sauce secrète': 'Fried shrimp, lettuce, secret sauce',
+  'Penne, sauce tomate relevée au piment': 'Penne, spicy tomato sauce',
+  'Penne, poulet, champignons, parmesan': 'Penne, chicken, mushrooms, parmesan',
+  'Spaghetti, boeuf, tomates concassées': 'Spaghetti, beef, crushed tomatoes',
+  'Dinde fumée, boeuf fumé, crème': 'Smoked turkey, smoked beef, cream',
+  'Crevettes, calamars, moules, saumon': 'Shrimp, calamari, mussels, salmon',
+  'Poulet grillé, sauce champignons, accompagnement au choix': 'Grilled chicken, mushroom sauce, side of your choice',
+  'Filet grillé, sauce poivre et herbes, accompagnement au choix': 'Grilled fillet, pepper and herb sauce, side of your choice',
+  'Kofta, kebab et poulet, riz et tahini': 'Kofta, kebab and chicken, rice and tahini',
+  'Saumon grillé, sauce citron, accompagnement au choix': 'Grilled salmon, lemon sauce, side of your choice',
+  'Poisson, saumon, calamars, moules, crevettes': 'Fish, salmon, calamari, mussels, shrimp',
+  'Crevettes, calamars, poisson, saumon, moules': 'Shrimp, calamari, fish, salmon, mussels',
+  'Crevettes grillées': 'Grilled shrimp',
+  'Mozzarella, sauce tomate': 'Mozzarella, tomato sauce',
+  'Mozzarella, salami, sauce tomate': 'Mozzarella, salami, tomato sauce',
+  'Fruits de mer, mozzarella, sauce tomate': 'Seafood, mozzarella, tomato sauce',
+  'Mélange de quatre fromages': 'Four-cheese mix',
+  'Poulet, légumes, sauce BBQ': 'Chicken, vegetables, BBQ sauce',
+  'Moelleux au chocolat et glace': 'Chocolate lava cake with ice cream',
+  'Fraise, mangue, goyave': 'Strawberry, mango, guava',
+  'Orange, kiwi, citron': 'Orange, kiwi, lemon',
+  'Ananas, kiwi, pêche': 'Pineapple, kiwi, peach',
+  'Kiwi, mangue, glace': 'Kiwi, mango, ice cream',
+  'Fraise, mangue, banane': 'Strawberry, mango, banana',
+  'Fraise, mangue, glace': 'Strawberry, mango, ice cream',
+  'Avocat, kiwi, banane, lait, miel, noix': 'Avocado, kiwi, banana, milk, honey, nuts',
+};
+
+const NAME_TO_EN: Record<string, string> = { ...CATEGORY_EN, ...PRODUCT_EN };
+const NAME_TO_FR: Record<string, string> = {};
+for (const [frName, enName] of Object.entries(NAME_TO_EN)) {
+  NAME_TO_FR[enName] = frName;
+}
+
+const DESC_TO_FR: Record<string, string> = {};
+for (const [frDesc, enDesc] of Object.entries(DESC_EN)) {
+  DESC_TO_FR[enDesc] = frDesc;
+}
+
+export function translateMenuName(name: string, locale: Locale): string {
+  if (locale === 'en') return NAME_TO_EN[name] ?? name;
+  return NAME_TO_FR[name] ?? name;
+}
+
+export function translateMenuDescription(description: string | null, locale: Locale): string | null {
+  if (!description) return description;
+  if (locale === 'en') return DESC_EN[description] ?? description;
+  return DESC_TO_FR[description] ?? description;
+}
+
+export function localizeMenu(menu: Menu, locale: Locale): Menu {
+  const products: MenuProduct[] = menu.products.map((product) => {
+    const sourceName = NAME_TO_FR[product.name] ?? product.name;
+    const nameEn = NAME_TO_EN[sourceName] ?? sourceName;
+    const name = locale === 'en' ? nameEn : sourceName;
+    const description = translateMenuDescription(product.description, locale);
+    return {
+      ...product,
+      name,
+      description,
+      searchKey: normalize(`${sourceName} ${nameEn} ${description ?? ''}`),
+      optionGroups: product.optionGroups.map((group) => ({
+        ...group,
+        name: translateMenuName(group.name, locale),
+        options: group.options.map((option) => ({
+          ...option,
+          name: translateMenuName(option.name, locale),
+        })),
+      })),
+    };
+  });
+
+  return {
+    categories: menu.categories.map((category) => ({
+      ...category,
+      name: translateMenuName(category.name, locale),
+    })),
+    products,
+  };
+}

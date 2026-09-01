@@ -11,11 +11,14 @@ import { formatAmount } from '@/lib/money';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeDbError } from '@/lib/adminErrors';
 import { useAdminMenu } from '@/lib/useAdminMenu';
+import { useI18n } from '@/lib/i18n';
+import { translateMenuName } from '@/lib/menuI18n';
 import type { CategoryRow, OptionGroupRow, ProductRow } from '@/lib/types';
 
 type Tab = 'products' | 'categories' | 'options';
 
 export function MenuAdmin() {
+  const { t } = useI18n();
   const { data, loading, error, reload } = useAdminMenu();
   const [tab, setTab] = useState<Tab>('products');
   const [actionError, setActionError] = useState<string | null>(null);
@@ -23,9 +26,9 @@ export function MenuAdmin() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-4">
       <div className="grid grid-cols-3 gap-2">
-        <TabButton active={tab === 'products'} onClick={() => setTab('products')} label="Produits" />
-        <TabButton active={tab === 'categories'} onClick={() => setTab('categories')} label="Categories" />
-        <TabButton active={tab === 'options'} onClick={() => setTab('options')} label="Options" />
+        <TabButton active={tab === 'products'} onClick={() => setTab('products')} label={t('admin.products')} />
+        <TabButton active={tab === 'categories'} onClick={() => setTab('categories')} label={t('admin.categories')} />
+        <TabButton active={tab === 'options'} onClick={() => setTab('options')} label={t('admin.options')} />
       </div>
 
       <ErrorNote message={error ?? actionError} />
@@ -55,6 +58,7 @@ function ProductsTab({
   reload: () => void;
   onError: (message: string | null) => void;
 }) {
+  const { t, locale } = useI18n();
   const [categoryId, setCategoryId] = useState<string | 'ALL'>('ALL');
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
@@ -74,7 +78,11 @@ function ProductsTab({
       // showArchived : on veut les produits inactifs, et eux seuls.
       if (p.active === showArchived) return false;
       if (categoryId !== 'ALL' && p.category_id !== categoryId) return false;
-      if (q && !normalize(p.name).includes(q)) return false;
+      if (q) {
+        const fr = normalize(p.name);
+        const en = normalize(translateMenuName(p.name, 'en'));
+        if (!fr.includes(q) && !en.includes(q)) return false;
+      }
       return true;
     });
   }, [data.products, categoryId, query, showArchived]);
@@ -119,13 +127,17 @@ function ProductsTab({
   return (
     <div className="space-y-3">
       <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
-        <Chip active={categoryId === 'ALL'} onClick={() => setCategoryId('ALL')} label="Toutes" />
+        <Chip active={categoryId === 'ALL'} onClick={() => setCategoryId('ALL')} label={t('admin.all')} />
         {data.categories.map((c) => (
           <Chip
             key={c.id}
             active={categoryId === c.id}
             onClick={() => setCategoryId(c.id)}
-            label={c.active ? c.name : `${c.name} (off)`}
+            label={
+              c.active
+                ? translateMenuName(c.name, locale)
+                : `${translateMenuName(c.name, locale)} (off)`
+            }
           />
         ))}
       </div>
@@ -134,13 +146,13 @@ function ProductsTab({
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Rechercher un produit…"
+        placeholder={t('admin.searchProduct')}
         className={inputClass}
       />
 
       <div className="flex items-center justify-between rounded-2xl border border-line bg-surface px-4 py-2.5">
-        <span className="text-sm font-bold text-ink-2">Afficher les archives</span>
-        <Toggle checked={showArchived} onChange={setShowArchived} label="Afficher les archives" />
+        <span className="text-sm font-bold text-ink-2">{t('admin.showArchived')}</span>
+        <Toggle checked={showArchived} onChange={setShowArchived} label={t('admin.showArchived')} />
       </div>
 
       <PrimaryButton
@@ -151,21 +163,23 @@ function ProductsTab({
         className="w-full"
         disabled={data.categories.length === 0}
       >
-        + Ajouter un produit
+        {t('admin.addProduct')}
       </PrimaryButton>
 
       {data.categories.length === 0 ? (
-        <EmptyState text="Cree d'abord une categorie." />
+        <EmptyState text={t('admin.needCategory')} />
       ) : products.length === 0 ? (
-        <EmptyState text={showArchived ? 'Aucun produit archive.' : 'Aucun produit.'} />
+        <EmptyState text={showArchived ? t('admin.noArchived') : t('admin.noProduct')} />
       ) : (
         <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
           {products.map((product) => (
             <li key={product.id} className="flex items-center gap-3 p-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-bold leading-tight text-ink">{product.name}</p>
+                <p className="truncate text-[15px] font-bold leading-tight text-ink">
+                  {translateMenuName(product.name, locale)}
+                </p>
                 <p className="truncate text-xs text-muted">
-                  {categoryById.get(product.category_id)?.name ?? '—'} ·{' '}
+                  {translateMenuName(categoryById.get(product.category_id)?.name ?? '—', locale)} ·{' '}
                   <span className="font-bold text-brand">{formatAmount(product.price_cents)} EGP</span>
                 </p>
               </div>
@@ -254,6 +268,7 @@ function CategoriesTab({
   reload: () => void;
   onError: (message: string | null) => void;
 }) {
+  const { locale } = useI18n();
   const [editing, setEditing] = useState<CategoryRow | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -329,7 +344,9 @@ function CategoriesTab({
                 aria-hidden="true"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-bold leading-tight text-ink">{category.name}</p>
+                <p className="truncate text-[15px] font-bold leading-tight text-ink">
+                  {translateMenuName(category.name, locale)}
+                </p>
                 <p className="text-xs text-muted">
                   {data.products.filter((p) => p.category_id === category.id && p.active).length} produits
                 </p>

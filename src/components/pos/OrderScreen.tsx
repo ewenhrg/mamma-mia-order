@@ -12,6 +12,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { CartSheet } from '@/components/pos/CartSheet';
 import { OutboxBanner } from '@/components/pos/OutboxBanner';
 import { ProductCard } from '@/components/pos/ProductCard';
@@ -26,6 +27,7 @@ import {
   type CartState,
 } from '@/lib/cart';
 import { normalize, useMenu } from '@/lib/menu';
+import { localizeMenu } from '@/lib/menuI18n';
 import { formatAmount } from '@/lib/money';
 import { enqueue, onOrderSent } from '@/lib/outbox';
 import { getLastCategory, getRecentProductIds, pushRecentProduct, setLastCategory } from '@/lib/prefs';
@@ -33,6 +35,8 @@ import { STORAGE_KEYS, readJSON, removeKey, writeJSON } from '@/lib/storage';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeAdminError } from '@/lib/adminErrors';
 import { useOrder } from '@/lib/useOrder';
+import { useI18n } from '@/lib/i18n';
+import { plural } from '@/lib/messages';
 import type { MenuProduct, RestaurantTableRow, StaffRole } from '@/lib/types';
 
 const RECENT_TAB = '__recent__';
@@ -43,8 +47,10 @@ type Props = {
 };
 
 export function OrderScreen({ table, role }: Props) {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const { menu, loading: menuLoading, error: menuError, reload } = useMenu();
+  const displayMenu = useMemo(() => localizeMenu(menu, locale), [menu, locale]);
   const { order, items: orderItems, refresh: refreshOrder } = useOrder(table.id);
 
   const requestedItems = useMemo(
@@ -88,11 +94,11 @@ export function OrderScreen({ table, role }: Props) {
   // Reprend la categorie de la table precedente : pendant un service, le
   // serveur enchaine souvent les memes rubriques.
   useEffect(() => {
-    if (category !== null || menu.categories.length === 0) return;
+    if (category !== null || displayMenu.categories.length === 0) return;
     const last = getLastCategory();
-    const stillExists = last && menu.categories.some((c) => c.id === last);
-    setCategory(stillExists ? last : menu.categories[0].id);
-  }, [menu.categories, category]);
+    const stillExists = last && displayMenu.categories.some((c) => c.id === last);
+    setCategory(stillExists ? last : displayMenu.categories[0].id);
+  }, [displayMenu.categories, category]);
 
   const selectCategory = useCallback((id: string) => {
     setCategory(id);
@@ -127,17 +133,17 @@ export function OrderScreen({ table, role }: Props) {
       onOrderSent((result, entry) => {
         if (entry.tableId !== table.id) return;
         void refreshOrder();
-        setToast({ kind: 'ok', text: `Commande #${result.order_number} confirmee en cuisine` });
+        setToast({ kind: 'ok', text: t('order.kitchenToast', { n: result.order_number }) });
       }),
-    [table.id, refreshOrder],
+    [table.id, refreshOrder, t],
   );
 
   // --- derives -------------------------------------------------------------
   const productsById = useMemo(() => {
     const map = new Map<string, MenuProduct>();
-    for (const p of menu.products) map.set(p.id, p);
+    for (const p of displayMenu.products) map.set(p.id, p);
     return map;
-  }, [menu.products]);
+  }, [displayMenu.products]);
 
   /** Une seule passe sur le panier, au lieu d'un parcours par carte affichee. */
   const quantityByProduct = useMemo(() => {
@@ -156,12 +162,12 @@ export function OrderScreen({ table, role }: Props) {
   const visibleProducts = useMemo(() => {
     const q = normalize(deferredQuery.trim());
     if (q.length > 0) {
-      return menu.products.filter((p) => p.searchKey.includes(q));
+      return displayMenu.products.filter((p) => p.searchKey.includes(q));
     }
     if (category === RECENT_TAB) return recentProducts;
     if (!category) return [];
-    return menu.products.filter((p) => p.categoryId === category);
-  }, [menu.products, deferredQuery, category, recentProducts]);
+    return displayMenu.products.filter((p) => p.categoryId === category);
+  }, [displayMenu.products, deferredQuery, category, recentProducts]);
 
   const draftCount = useMemo(() => cartItemCount(cart.lines), [cart.lines]);
   const draftTotal = useMemo(() => cartTotalCents(cart.lines), [cart.lines]);
@@ -241,15 +247,14 @@ export function OrderScreen({ table, role }: Props) {
 
       dispatch({ type: 'clear' });
       setCartOpen(false);
-      showToast('ok', `Commande envoyee — ${draftCount} article${draftCount > 1 ? 's' : ''}`);
+      showToast('ok', t('order.sentToast', { n: draftCount }));
     } finally {
       setSubmitting(false);
-      // Fenetre courte pendant laquelle un second tap est ignore.
       setTimeout(() => {
         submitLock.current = false;
       }, 800);
     }
-  }, [cart.lines, cart.note, draftCount, draftTotal, table.id, table.label, showToast]);
+  }, [cart.lines, cart.note, draftCount, draftTotal, table.id, table.label, showToast, t]);
 
   const voidItem = useCallback(
     async (itemId: string) => {
@@ -264,7 +269,7 @@ export function OrderScreen({ table, role }: Props) {
     if (!order || accepting) return;
     const count = requestedItems.reduce((sum, item) => sum + item.quantity, 0);
     if (count === 0) return;
-    if (!window.confirm(`Envoyer ${count} article${count > 1 ? 's' : ''} en cuisine ?`)) return;
+    if (!window.confirm(t('order.confirmAccept', { n: count }))) return;
 
     setAccepting(true);
     const { error } = await getSupabaseBrowser().rpc('pos_accept_guest_items', {
@@ -276,8 +281,8 @@ export function OrderScreen({ table, role }: Props) {
       return;
     }
     await refreshOrder();
-    showToast('ok', `${count} article${count > 1 ? 's' : ''} envoye${count > 1 ? 's' : ''} en cuisine`);
-  }, [order, accepting, requestedItems, refreshOrder, showToast]);
+    showToast('ok', t('order.acceptedToast', { n: count }));
+  }, [order, accepting, requestedItems, refreshOrder, showToast, t]);
 
   /**
    * Encaisser ne libere pas la table : le paiement est enregistre, la
@@ -287,7 +292,7 @@ export function OrderScreen({ table, role }: Props) {
     if (!order) return;
     const due = Math.max(order.total_cents - order.paid_amount_cents, 0);
     const amount = order.paid_at ? due : order.total_cents;
-    if (!window.confirm(`Encaisser ${formatAmount(amount)} EGP sur la table ${table.label} ?`)) {
+    if (!window.confirm(t('order.confirmPay', { amount: formatAmount(amount), label: table.label }))) {
       return;
     }
 
@@ -300,13 +305,13 @@ export function OrderScreen({ table, role }: Props) {
       return;
     }
     await refreshOrder();
-    showToast('ok', `Table ${table.label} encaissee — elle reste ouverte`);
-  }, [order, table.label, refreshOrder, showToast]);
+    showToast('ok', t('order.paidToast', { label: table.label }));
+  }, [order, table.label, refreshOrder, showToast, t]);
 
   /** Geste distinct et explicite : c'est lui seul qui rend la table libre. */
   const releaseTable = useCallback(async () => {
     if (!order) return;
-    if (!window.confirm(`Liberer la table ${table.label} ? Elle repassera en LIBRE.`)) return;
+    if (!window.confirm(t('order.confirmRelease', { label: table.label }))) return;
 
     const { error } = await getSupabaseBrowser().rpc('pos_release_table', {
       p_order_id: order.id,
@@ -317,18 +322,18 @@ export function OrderScreen({ table, role }: Props) {
     }
     setCartOpen(false);
     router.push('/');
-  }, [order, table.label, router, showToast]);
+  }, [order, table.label, router, showToast, t]);
 
   // ------------------------------------------------------------------ vue --
   const headerStatus = useMemo(() => {
-    if (!order) return `${table.seats} places · nouvelle commande`;
+    if (!order) return t('order.new', { n: table.seats });
     const remaining = Math.max(order.total_cents - order.paid_amount_cents, 0);
     if (order.paid_at && remaining > 0) {
-      return `Encaissee · reste ${formatAmount(remaining)} EGP`;
+      return t('order.paidRemain', { amount: formatAmount(remaining) });
     }
-    if (order.paid_at) return `Encaissee ${formatAmount(order.paid_amount_cents)} EGP · table ouverte`;
-    return `Commande en cours · ${formatAmount(order.total_cents)} EGP`;
-  }, [order, table.seats]);
+    if (order.paid_at) return t('order.paidOpen', { amount: formatAmount(order.paid_amount_cents) });
+    return t('order.inProgress', { amount: formatAmount(order.total_cents) });
+  }, [order, table.seats, t]);
 
   const showRecentTab = recentProducts.length > 0;
   const searching = query.trim().length > 0;
@@ -341,19 +346,21 @@ export function OrderScreen({ table, role }: Props) {
           <Link
             href="/"
             className="tap flex size-11 shrink-0 items-center justify-center rounded-xl text-ink active:bg-canvas"
-            aria-label="Retour a la salle"
+            aria-label={t('order.back')}
           >
-            <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2.4">
+            <svg viewBox="0 0 24 24" className="size-6 rtl:rotate-180" fill="none" stroke="currentColor" strokeWidth="2.4">
               <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </Link>
 
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-extrabold leading-tight text-ink">
-              Table {table.label}
+              {t('order.table', { label: table.label })}
             </h1>
             <p className="truncate text-xs text-muted">{headerStatus}</p>
           </div>
+
+          <LanguageSwitcher compact />
 
           <button
             type="button"
@@ -362,7 +369,7 @@ export function OrderScreen({ table, role }: Props) {
               if (!searchOpen) requestAnimationFrame(() => searchInputRef.current?.focus());
               else setQuery('');
             }}
-            aria-label="Rechercher un produit"
+            aria-label={t('order.search')}
             className={`tap flex size-11 shrink-0 items-center justify-center rounded-xl border ${
               searchOpen ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink-2'
             }`}
@@ -381,7 +388,7 @@ export function OrderScreen({ table, role }: Props) {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Nom du produit…"
+              placeholder={t('order.searchPlaceholder')}
               autoComplete="off"
               className="h-12 w-full rounded-2xl border border-line bg-canvas px-4 text-ink outline-none placeholder:text-muted/70 focus:border-brand focus:bg-surface"
             />
@@ -392,10 +399,10 @@ export function OrderScreen({ table, role }: Props) {
               <CategoryTab
                 active={category === RECENT_TAB}
                 onClick={() => selectCategory(RECENT_TAB)}
-                label="Recents"
+                label={t('order.recent')}
               />
             ) : null}
-            {menu.categories.map((c) => (
+            {displayMenu.categories.map((c) => (
               <CategoryTab
                 key={c.id}
                 active={category === c.id}
@@ -414,15 +421,15 @@ export function OrderScreen({ table, role }: Props) {
         <button
           type="button"
           onClick={() => setCartOpen(true)}
-          className="tap sticky top-0 z-20 flex w-full items-center gap-3 bg-brand px-4 py-3 text-left text-white"
+          className="tap sticky top-0 z-20 flex w-full items-center gap-3 bg-brand px-4 py-3 text-start text-white"
         >
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/20 text-sm font-extrabold tabular-nums">
             {requestedCount}
           </span>
           <span className="min-w-0 flex-1 text-sm font-bold">
-            Commande client a verifier
+            {t('order.guestBanner')}
           </span>
-          <span className="shrink-0 text-sm font-extrabold">Ouvrir</span>
+          <span className="shrink-0 text-sm font-extrabold">{t('order.open')}</span>
         </button>
       ) : null}
 
@@ -441,7 +448,7 @@ export function OrderScreen({ table, role }: Props) {
             href="/"
             className="tap shrink-0 rounded-lg bg-white/20 px-3 py-1.5 text-sm font-bold text-white"
           >
-            Salle
+            {t('order.floor')}
           </Link>
         </div>
       ) : null}
@@ -456,18 +463,18 @@ export function OrderScreen({ table, role }: Props) {
           </div>
         ) : menuError && menu.products.length === 0 ? (
           <div className="mt-10 text-center">
-            <p className="text-sm font-medium text-alert">Menu indisponible</p>
+            <p className="text-sm font-medium text-alert">{t('order.menuDown')}</p>
             <button
               type="button"
               onClick={reload}
               className="tap mt-4 h-12 rounded-2xl bg-brand px-6 font-bold text-white"
             >
-              Reessayer
+              {t('order.retry')}
             </button>
           </div>
         ) : visibleProducts.length === 0 ? (
           <p className="mt-12 text-center text-sm text-muted">
-            {searching ? `Aucun produit pour « ${query.trim()} »` : 'Aucun produit dans cette categorie.'}
+            {searching ? t('order.noSearch', { q: query.trim() }) : t('order.noCategory')}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-2.5 min-[420px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-6">
@@ -489,7 +496,7 @@ export function OrderScreen({ table, role }: Props) {
         <button
           type="button"
           onClick={() => setCartOpen(true)}
-          className={`tap-strong mb-2.5 flex h-16 w-full items-center gap-3 rounded-2xl px-4 text-left ${
+          className={`tap-strong mb-2.5 flex h-16 w-full items-center gap-3 rounded-2xl px-4 text-start ${
             draftCount > 0 || requestedCount > 0
               ? 'bg-brand text-white shadow-lg shadow-brand/25'
               : order
@@ -512,27 +519,29 @@ export function OrderScreen({ table, role }: Props) {
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[15px] font-extrabold leading-tight">
               {draftCount > 0
-                ? `${draftCount} article${draftCount > 1 ? 's' : ''}`
+                ? t(plural(draftCount, 'order.items', 'order.items_other'), { n: draftCount })
                 : requestedCount > 0
-                  ? `${requestedCount} demande${requestedCount > 1 ? 's' : ''} client`
+                  ? t(plural(requestedCount, 'order.guestRequests', 'order.guestRequests_other'), {
+                      n: requestedCount,
+                    })
                   : order
-                    ? 'Voir la commande'
-                    : 'Panier vide'}
+                    ? t('order.viewOrder')
+                    : t('order.emptyCart')}
             </span>
             <span className="block truncate text-xs opacity-80">
               {draftCount > 0
-                ? `${formatAmount(draftTotal)} EGP a envoyer`
+                ? t('order.toSend', { amount: formatAmount(draftTotal) })
                 : requestedCount > 0
-                  ? 'A verifier avant la cuisine'
+                  ? t('order.checkKitchen')
                   : order
-                    ? `${formatAmount(order.total_cents)} EGP deja commandes`
-                    : 'Tape un produit pour commencer'}
+                    ? t('order.alreadyOrdered', { amount: formatAmount(order.total_cents) })
+                    : t('order.tapProduct')}
             </span>
           </span>
 
           {draftCount > 0 || requestedCount > 0 || order ? (
             <span className="shrink-0 rounded-xl bg-white/20 px-3 py-2 text-sm font-extrabold">
-              {draftCount > 0 || requestedCount > 0 ? 'Voir' : 'Ouvrir'}
+              {draftCount > 0 || requestedCount > 0 ? t('order.see') : t('order.open')}
             </span>
           ) : null}
         </button>

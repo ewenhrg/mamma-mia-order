@@ -5,15 +5,16 @@ import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorNote, Toggle } from '@/components/admin/ui';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeDbError } from '@/lib/adminErrors';
+import { useI18n } from '@/lib/i18n';
 import type { StaffRole, StaffRow } from '@/lib/types';
 
-const ROLES: { value: StaffRole; label: string; hint: string }[] = [
-  { value: 'server', label: 'Serveur', hint: 'Prend les commandes' },
-  { value: 'manager', label: 'Manager', hint: 'Gere le menu, annule des lignes, accorde des remises' },
-  { value: 'admin', label: 'Admin', hint: 'Acces complet' },
-];
-
 export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: string; currentRole: StaffRole }) {
+  const { t } = useI18n();
+  const ROLES: { value: StaffRole; label: string; hint: string }[] = [
+    { value: 'server', label: t('admin.role.server'), hint: t('admin.role.serverHint') },
+    { value: 'manager', label: t('admin.role.manager'), hint: t('admin.role.managerHint') },
+    { value: 'admin', label: t('admin.role.admin'), hint: t('admin.role.adminHint') },
+  ];
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,11 +52,8 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
   return (
     <div className="mx-auto w-full max-w-3xl space-y-3">
       <div className="rounded-2xl border border-line bg-surface p-4 text-sm leading-relaxed text-ink-2">
-        <p className="font-bold text-ink">Ajouter un serveur</p>
-        <p className="mt-1">
-          Cree son compte dans Supabase &rsaquo; Authentication &rsaquo; Users, puis active-le ci-dessous.
-          Un compte fraichement cree n&apos;a aucun acces tant qu&apos;il n&apos;est pas active ici.
-        </p>
+        <p className="font-bold text-ink">{t('admin.addStaffTitle')}</p>
+        <p className="mt-1">{t('admin.addStaffBody')}</p>
       </div>
 
       <ErrorNote message={error} />
@@ -65,7 +63,7 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
           <Spinner className="size-6" />
         </div>
       ) : staff.length === 0 ? (
-        <EmptyState text="Aucun membre." />
+        <EmptyState text={t('admin.noStaff')} />
       ) : (
         <ul className="space-y-2">
           {staff.map((member) => {
@@ -79,10 +77,10 @@ export function StaffAdmin({ currentUserId, currentRole }: { currentUserId: stri
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-bold leading-tight text-ink">
                       {member.full_name}
-                      {isSelf ? <span className="ml-1.5 text-xs font-semibold text-muted">(toi)</span> : null}
+                      {isSelf ? <span className="ms-1.5 text-xs font-semibold text-muted">{t('admin.you')}</span> : null}
                     </p>
                     <p className="text-xs text-muted">
-                      {member.active ? 'Actif' : 'Inactif'} ·{' '}
+                      {member.active ? t('admin.active') : t('admin.inactive')} ·{' '}
                       {ROLES.find((r) => r.value === member.role)?.label}
                     </p>
                   </div>

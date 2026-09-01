@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import { useI18n } from '@/lib/i18n';
 import { formatAmount } from '@/lib/money';
 import type { MenuProduct } from '@/lib/types';
 
@@ -14,6 +15,7 @@ type Props = {
 };
 
 function ProductCardBase({ product, quantity, onTap, onLongPress }: Props) {
+  const { t } = useI18n();
   const disabled = !product.available;
 
   return (
@@ -48,7 +50,7 @@ function ProductCardBase({ product, quantity, onTap, onLongPress }: Props) {
           {formatAmount(product.priceCents)}
         </span>
         {disabled ? (
-          <span className="text-[10px] font-bold uppercase tracking-wide text-alert">Epuise</span>
+          <span className="text-[10px] font-bold uppercase tracking-wide text-alert">{t('order.soldOut')}</span>
         ) : (
           <span className="flex size-6 items-center justify-center rounded-full bg-brand/10 text-brand">
             <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="3">

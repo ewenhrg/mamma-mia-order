@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { getStaffSession, getSupabaseServer } from '@/lib/supabase/server';
 import { guestOrderUrl, guestQrImageUrl } from '@/lib/guest';
 import { PrintButton } from '@/components/admin/PrintButton';
+import { QrStaffCopy } from '@/components/admin/QrStaffCopy';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'QR clients — Tables' };
@@ -29,17 +30,12 @@ export default async function PrintQrPage() {
   return (
     <div className="bg-white text-ink">
       <div className="print:hidden mx-auto max-w-3xl space-y-3 px-3 py-4">
-        <p className="text-sm leading-relaxed text-ink-2">
-          Un QR par table. Imprime, plastifie, pose sur la table. Le client scanne et commande ;
-          ça arrive dans le POS.
-        </p>
+        <QrStaffCopy empty={false} />
         <PrintButton />
       </div>
 
       {printable.length === 0 ? (
-        <p className="print:hidden px-4 py-10 text-center text-sm text-muted">
-          Execute 0007_commande_client.sql dans Supabase, puis reviens ici.
-        </p>
+        <QrStaffCopy empty />
       ) : (
         <ul className="grid grid-cols-2 gap-4 p-4 md:grid-cols-3 print:grid-cols-3 print:gap-6">
           {printable.map((table) => {

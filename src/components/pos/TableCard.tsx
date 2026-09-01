@@ -6,48 +6,49 @@ import { formatAmount } from '@/lib/money';
 import { formatElapsed } from '@/lib/time';
 import type { TableOverviewRow } from '@/lib/types';
 import type { DraftSummary } from '@/lib/drafts';
+import { useI18n } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/messages';
 
 /** Au-dela, la table est signalee : elle occupe la salle depuis longtemps. */
 const LONG_STAY_MINUTES = 90;
 
 export type TableState = 'free' | 'active' | 'long' | 'paid' | 'reopened' | 'requested';
 
-const STATE_STYLES: Record<TableState, { card: string; dot: string; label: string; text: string }> = {
+const STATE_STYLES: Record<TableState, { card: string; dot: string; text: string; labelKey: MessageKey }> = {
   free: {
     card: 'border-line bg-surface',
     dot: 'bg-free',
-    label: 'LIBRE',
+    labelKey: 'table.free',
     text: 'text-free',
   },
   active: {
     card: 'border-busy/35 bg-busy-soft',
     dot: 'bg-busy',
-    label: 'EN COURS',
+    labelKey: 'table.active',
     text: 'text-busy',
   },
   long: {
     card: 'border-alert/35 bg-alert-soft',
     dot: 'bg-alert',
-    label: 'OCCUPEE',
+    labelKey: 'table.long',
     text: 'text-alert',
   },
-  // Encaissee mais TOUJOURS occupee : la table n'est liberee que sur demande.
   paid: {
     card: 'border-free/40 bg-free-soft',
     dot: 'bg-free',
-    label: 'ENCAISSEE',
+    labelKey: 'table.paid',
     text: 'text-free',
   },
   reopened: {
     card: 'border-alert/40 bg-alert-soft',
     dot: 'bg-alert',
-    label: 'RESTE A PAYER',
+    labelKey: 'table.reopened',
     text: 'text-alert',
   },
   requested: {
     card: 'border-brand/40 bg-brand-soft',
     dot: 'bg-brand',
-    label: 'DEMANDE',
+    labelKey: 'table.requested',
     text: 'text-brand',
   },
 };
@@ -57,6 +58,7 @@ type Props = {
   draft?: DraftSummary;
   /** Passe par le parent pour que toutes les cartes partagent le meme instant. */
   now: number;
+  locale: string;
 };
 
 export function tableState(table: TableOverviewRow, now: number): TableState {
@@ -72,10 +74,13 @@ export function tableState(table: TableOverviewRow, now: number): TableState {
 }
 
 function TableCardBase({ table, draft, now }: Props) {
+  const { t } = useI18n();
   const hasOrder = table.order_id !== null;
   const state = tableState(table, now);
   const style = STATE_STYLES[state];
   const remaining = table.order_remaining_cents ?? 0;
+  const statusLabel =
+    state === 'requested' ? t('table.requested') : draft ? t('table.draft') : t(style.labelKey);
 
   return (
     <Link
@@ -85,8 +90,8 @@ function TableCardBase({ table, draft, now }: Props) {
     >
       {draft ? (
         <span
-          className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-ink px-1.5 text-[11px] font-bold text-white shadow"
-          title="Panier non envoye sur ce telephone"
+          className="absolute -end-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-ink px-1.5 text-[11px] font-bold text-white shadow"
+          title={t('table.draftTitle')}
         >
           {draft.itemCount}
         </span>
@@ -101,7 +106,7 @@ function TableCardBase({ table, draft, now }: Props) {
 
       <div className="mt-2">
         <span className={`block text-[11px] font-bold uppercase tracking-wide ${style.text}`}>
-          {state === 'requested' ? 'DEMANDE' : draft ? 'BROUILLON' : style.label}
+          {statusLabel}
         </span>
 
         {hasOrder ? (
@@ -113,13 +118,13 @@ function TableCardBase({ table, draft, now }: Props) {
             </span>
             <span className="mt-0.5 block truncate text-[11px] text-muted">
               {state === 'requested'
-                ? `${table.requested_count} a valider`
-                : `${table.item_count} art.`}{' '}
+                ? t('table.toValidate', { n: table.requested_count ?? 0 })
+                : t('table.art', { n: table.item_count })}{' '}
               · {formatElapsed(table.order_opened_at ?? now, now)}
             </span>
           </>
         ) : (
-          <span className="mt-0.5 block text-[11px] text-muted">{table.seats} places</span>
+          <span className="mt-0.5 block text-[11px] text-muted">{t('table.seats', { n: table.seats })}</span>
         )}
       </div>
     </Link>
@@ -144,6 +149,7 @@ export const TableCard = memo(TableCardBase, (prev, next) => {
     a.requested_count === b.requested_count &&
     a.order_opened_at === b.order_opened_at &&
     prev.draft?.itemCount === next.draft?.itemCount &&
+    prev.locale === next.locale &&
     // L'affichage ne change qu'a la minute : inutile de re-rendre plus souvent.
     Math.floor(prev.now / 60000) === Math.floor(next.now / 60000)
   );

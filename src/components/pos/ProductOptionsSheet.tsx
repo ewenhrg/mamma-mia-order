@@ -5,19 +5,21 @@ import { Sheet } from '@/components/ui/Sheet';
 import { formatAmount } from '@/lib/money';
 import { MAX_LINE_QUANTITY } from '@/lib/cart';
 import type { MenuProduct } from '@/lib/types';
+import { useI18n } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/messages';
 
 /** Demandes les plus frequentes en salle : un tap au lieu de dix lettres. */
-const QUICK_NOTES = [
-  'Sans oignon',
-  'Sans sauce',
-  'Sans piment',
-  'Sans glace',
-  'Bien cuit',
-  'A point',
-  'Riz',
-  'A part',
-  'Allergie',
-  'Pour enfant',
+const QUICK_NOTE_KEYS: MessageKey[] = [
+  'note.n1',
+  'note.n2',
+  'note.n3',
+  'note.n4',
+  'note.n5',
+  'note.n6',
+  'note.n7',
+  'note.n8',
+  'note.n9',
+  'note.n10',
 ];
 
 export type OptionsDraft = {
@@ -35,6 +37,7 @@ type Props = {
 };
 
 export function ProductOptionsSheet({ product, initial, onClose, onConfirm }: Props) {
+  const { t } = useI18n();
   const [note, setNote] = useState('');
   const [quantity, setQuantity] = useState(1);
 
@@ -69,7 +72,7 @@ export function ProductOptionsSheet({ product, initial, onClose, onConfirm }: Pr
         <div className="flex items-center gap-3">
           <div className="flex h-14 shrink-0 items-center gap-1 rounded-2xl border border-line bg-surface px-1">
             <StepButton
-              label="Diminuer la quantite"
+              label={t('note.qtyDown')}
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
               disabled={quantity <= 1}
             >
@@ -81,7 +84,7 @@ export function ProductOptionsSheet({ product, initial, onClose, onConfirm }: Pr
               {quantity}
             </span>
             <StepButton
-              label="Augmenter la quantite"
+              label={t('note.qtyUp')}
               onClick={() => setQuantity((q) => Math.min(MAX_LINE_QUANTITY, q + 1))}
               disabled={quantity >= MAX_LINE_QUANTITY}
             >
@@ -96,20 +99,21 @@ export function ProductOptionsSheet({ product, initial, onClose, onConfirm }: Pr
             onClick={() => onConfirm({ optionIds: [], note: note.trim(), quantity })}
             className="tap flex h-14 min-w-0 flex-1 items-center justify-between gap-2 rounded-2xl bg-brand px-5 font-bold text-white shadow-lg shadow-brand/25 active:bg-brand-dark"
           >
-            <span className="truncate">{initial ? 'Enregistrer' : 'Ajouter'}</span>
+            <span className="truncate">{initial ? t('note.save') : t('note.add')}</span>
             <span className="shrink-0 tabular-nums">{formatAmount(unitCents * quantity)}</span>
           </button>
         </div>
       }
     >
       <div className="space-y-3 p-4">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-ink-2">Note cuisine</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wide text-ink-2">{t('note.kitchen')}</h3>
         <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
-          {QUICK_NOTES.map((text) => {
+          {QUICK_NOTE_KEYS.map((key) => {
+            const text = t(key);
             const on = activeNotes.includes(text);
             return (
               <button
-                key={text}
+                key={key}
                 type="button"
                 onClick={() => toggleQuickNote(text)}
                 className={`tap h-10 shrink-0 rounded-full border px-3.5 text-sm font-semibold ${
@@ -125,7 +129,7 @@ export function ProductOptionsSheet({ product, initial, onClose, onConfirm }: Pr
           value={note}
           onChange={(e) => setNote(e.target.value.slice(0, 240))}
           rows={3}
-          placeholder="Precision pour la cuisine…"
+          placeholder={t('note.placeholder')}
           className="w-full resize-none rounded-2xl border border-line bg-surface px-4 py-3 text-ink outline-none placeholder:text-muted/70 focus:border-brand focus:ring-4 focus:ring-brand/15"
         />
       </div>

@@ -56,4 +56,5 @@ export const STORAGE_KEYS = {
   recentProducts: 'mm.recentProducts.v1',
   menuCache: 'mm.menu.v1',
   guestCart: (token: string) => `mm.guest.cart.v1.${token}`,
+  locale: 'mm.locale.v1',
 } as const;

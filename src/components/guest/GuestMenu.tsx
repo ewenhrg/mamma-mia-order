@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { ProductOptionsSheet, type OptionsDraft } from '@/components/pos/ProductOptionsSheet';
 import { Sheet } from '@/components/ui/Sheet';
 import { Spinner } from '@/components/ui/Spinner';
@@ -12,7 +13,10 @@ import {
   type CartLine,
   type CartState,
 } from '@/lib/cart';
+import { useI18n } from '@/lib/i18n';
 import { fetchGuestMenu } from '@/lib/menu';
+import { localizeMenu, translateMenuName } from '@/lib/menuI18n';
+import { plural } from '@/lib/messages';
 import { formatAmount } from '@/lib/money';
 import { STORAGE_KEYS, readJSON, removeKey, uuid, writeJSON } from '@/lib/storage';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
@@ -21,7 +25,24 @@ import type { Menu, MenuProduct, SubmitOrderResult } from '@/lib/types';
 
 const EMPTY: Menu = { categories: [], products: [] };
 
+export function GuestUnavailable() {
+  const { t } = useI18n();
+  return (
+    <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#F6EFE4] px-6 py-12 text-center">
+      <span className="flex size-16 items-center justify-center rounded-2xl bg-brand font-serif text-2xl font-bold text-white">
+        MM
+      </span>
+      <h1 className="mt-5 text-xl font-extrabold text-ink">{t('guest.invalidTitle')}</h1>
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-2">{t('guest.invalidBody')}</p>
+      <div className="mt-8">
+        <LanguageSwitcher />
+      </div>
+    </main>
+  );
+}
+
 export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: string }) {
+  const { t, locale } = useI18n();
   const [menu, setMenu] = useState<Menu>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +54,8 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
   );
   const [noteProduct, setNoteProduct] = useState<MenuProduct | null>(null);
   const [editing, setEditing] = useState<CartLine | null>(null);
+
+  const displayMenu = useMemo(() => localizeMenu(menu, locale), [menu, locale]);
 
   const [cart, dispatch] = useReducer(cartReducer, token, (tableId): CartState => {
     const saved = readJSON<CartState | null>(STORAGE_KEYS.guestCart(tableId), null);
@@ -68,8 +91,11 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
   }, []);
 
   const products = useMemo(
-    () => (categoryId ? menu.products.filter((p) => p.categoryId === categoryId) : menu.products),
-    [menu.products, categoryId],
+    () =>
+      categoryId
+        ? displayMenu.products.filter((p) => p.categoryId === categoryId)
+        : displayMenu.products,
+    [displayMenu.products, categoryId],
   );
   const count = useMemo(() => cartItemCount(cart.lines), [cart.lines]);
   const total = useMemo(() => cartTotalCents(cart.lines), [cart.lines]);
@@ -115,7 +141,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
     });
     setSubmitting(false);
     if (rpcError || !data) {
-      setError(describeDbError(rpcError ?? 'Envoi impossible'));
+      setError(describeDbError(rpcError ?? t('guest.sendFailed')));
       return;
     }
     dispatch({ type: 'clear' });
@@ -126,19 +152,21 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
       totalCents: result.total_cents,
       count: result.items_added,
     });
-  }, [cart.lines, cart.note, submitting, token]);
+  }, [cart.lines, cart.note, submitting, token, t]);
 
   if (sent) {
+    const itemsKey = plural(sent.count, 'guest.sentItems', 'guest.sentItemsMany');
     return (
       <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#F6EFE4] px-6 py-12 text-center">
         <div className="flex size-16 items-center justify-center rounded-full bg-[#0f9d5c] text-3xl text-white">
           ✓
         </div>
-        <h1 className="mt-5 text-2xl font-extrabold text-ink">C&apos;est parti</h1>
+        <h1 className="mt-5 text-2xl font-extrabold text-ink">{t('guest.sentTitle')}</h1>
         <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-2">
-          Commande #{sent.orderNumber} transmise au serveur
-          {sent.count > 0 ? ` · ${sent.count} article${sent.count > 1 ? 's' : ''}` : ''}.
-          Un serveur va la vérifier avant la cuisine.
+          {t('guest.sentBody', {
+            n: sent.orderNumber,
+            items: sent.count > 0 ? t(itemsKey, { n: sent.count }) : '',
+          })}
         </p>
         <p className="mt-1 text-lg font-extrabold tabular-nums text-brand">
           {formatAmount(sent.totalCents)} EGP
@@ -148,8 +176,11 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
           onClick={() => setSent(null)}
           className="tap mt-8 h-14 w-full max-w-sm rounded-2xl bg-brand font-bold text-white shadow-lg shadow-brand/20"
         >
-          Commander autre chose
+          {t('guest.orderMore')}
         </button>
+        <div className="mt-6">
+          <LanguageSwitcher />
+        </div>
       </main>
     );
   }
@@ -163,12 +194,13 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-lg font-extrabold leading-tight text-ink">Mamma Mia</p>
-            <p className="text-sm font-semibold text-brand">Table {tableLabel}</p>
+            <p className="text-sm font-semibold text-brand">{t('guest.table', { label: tableLabel })}</p>
           </div>
+          <LanguageSwitcher compact />
         </div>
-        {menu.categories.length > 0 ? (
+        {displayMenu.categories.length > 0 ? (
           <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-3">
-            {menu.categories.map((category) => {
+            {displayMenu.categories.map((category) => {
               const active = category.id === categoryId;
               return (
                 <button
@@ -199,7 +231,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
             <Spinner className="size-7" />
           </div>
         ) : products.length === 0 ? (
-          <p className="py-16 text-center text-sm text-muted">Menu en cours de mise à jour.</p>
+          <p className="py-16 text-center text-sm text-muted">{t('guest.empty')}</p>
         ) : (
           <ul className="space-y-2">
             {products.map((product) => {
@@ -245,7 +277,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
             className="tap pointer-events-auto flex h-16 w-full items-center justify-between rounded-2xl bg-brand px-5 text-white shadow-lg shadow-brand/30"
           >
             <span className="font-bold">
-              Voir le panier · {count} article{count > 1 ? 's' : ''}
+              {t(plural(count, 'guest.viewCart', 'guest.viewCartMany'), { n: count })}
             </span>
             <span className="text-lg font-extrabold tabular-nums">{formatAmount(total)}</span>
           </button>
@@ -255,8 +287,8 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
       <Sheet
         open={cartOpen}
         onClose={() => setCartOpen(false)}
-        title={`Table ${tableLabel}`}
-        subtitle="Le serveur vérifie ta commande avant la cuisine"
+        title={t('guest.table', { label: tableLabel })}
+        subtitle={t('guest.cartSubtitle')}
         footer={
           <button
             type="button"
@@ -265,7 +297,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
             className="tap flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-brand text-lg font-extrabold text-white shadow-lg shadow-brand/25 disabled:bg-line disabled:text-muted disabled:shadow-none"
           >
             {submitting ? <Spinner className="size-5" /> : null}
-            {submitting ? 'Envoi…' : `Demander · ${formatAmount(total)} EGP`}
+            {submitting ? t('guest.sending') : t('guest.ask', { amount: formatAmount(total) })}
           </button>
         }
       >
@@ -274,7 +306,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
             <div key={line.key} className="rounded-2xl border border-line bg-surface p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-ink">{line.name}</p>
+                  <p className="font-bold text-ink">{translateMenuName(line.name, locale)}</p>
                   {line.note ? (
                     <p className="mt-1 text-xs font-semibold text-busy">{line.note}</p>
                   ) : null}
@@ -288,7 +320,7 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
                   type="button"
                   onClick={() => dispatch({ type: 'decrement', key: line.key })}
                   className="tap flex size-11 items-center justify-center rounded-xl border border-line"
-                  aria-label="Retirer un"
+                  aria-label={t('guest.removeOne')}
                 >
                   −
                 </button>
@@ -297,33 +329,33 @@ export function GuestMenu({ token, tableLabel }: { token: string; tableLabel: st
                   type="button"
                   onClick={() => dispatch({ type: 'increment', key: line.key })}
                   className="tap flex size-11 items-center justify-center rounded-xl border border-line"
-                  aria-label="Ajouter un"
+                  aria-label={t('guest.addOne')}
                 >
                   +
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    const product = menu.products.find((p) => p.id === line.productId);
+                    const product = displayMenu.products.find((p) => p.id === line.productId);
                     if (!product) return;
                     setEditing(line);
                     setNoteProduct(product);
                   }}
                   className="tap ml-auto h-11 rounded-xl px-3 text-sm font-semibold text-ink-2"
                 >
-                  Note
+                  {t('guest.note')}
                 </button>
               </div>
             </div>
           ))}
 
           <label className="block">
-            <span className="mb-1.5 block text-sm font-bold text-ink-2">Note pour la table</span>
+            <span className="mb-1.5 block text-sm font-bold text-ink-2">{t('guest.tableNote')}</span>
             <textarea
               rows={2}
               value={cart.note}
               onChange={(e) => dispatch({ type: 'setNote', note: e.target.value.slice(0, 300) })}
-              placeholder="Allergie, sans glace…"
+              placeholder={t('guest.tableNotePh')}
               className="w-full resize-none rounded-2xl border border-line bg-surface px-4 py-3 text-ink outline-none focus:border-brand"
             />
           </label>

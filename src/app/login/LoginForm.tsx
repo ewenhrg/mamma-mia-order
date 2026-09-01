@@ -4,7 +4,10 @@ import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { ROSTER } from '@/lib/roster';
 import { signInAs, type SignInState } from './actions';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { Spinner } from '@/components/ui/Spinner';
+import { useI18n } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/messages';
 
 const INITIAL: SignInState = { error: null };
 
@@ -13,24 +16,29 @@ const INITIAL: SignInState = { error: null };
  * personne n'a le temps de taper une adresse email sur un telephone.
  */
 export function LoginForm({ next }: { next: string }) {
+  const { t } = useI18n();
   const [state, formAction] = useActionState(signInAs, INITIAL);
   const [chosen, setChosen] = useState<string | null>(null);
+
+  const errorText = loginError(state.error, t);
 
   return (
     <form action={formAction}>
       <input type="hidden" name="next" value={next} />
 
-      {/* Au-dessus de la grille : sous les prenoms, le message tomberait
-          hors ecran sur un telephone et passerait inapercu. */}
-      {state.error ? (
+      <div className="mb-5">
+        <LanguageSwitcher />
+      </div>
+
+      {errorText ? (
         <p
           role="alert"
           className="mb-3 rounded-2xl border border-alert/25 bg-alert-soft px-4 py-3 text-sm font-medium text-alert"
         >
-          {state.error}
+          {errorText}
         </p>
       ) : (
-        <p className="mb-3 text-center text-sm font-semibold text-ink-2">Qui prend le service ?</p>
+        <p className="mb-3 text-center text-sm font-semibold text-ink-2">{t('login.who')}</p>
       )}
 
       <div className="grid grid-cols-2 gap-2.5">
@@ -46,6 +54,15 @@ export function LoginForm({ next }: { next: string }) {
       </div>
     </form>
   );
+}
+
+const LOGIN_CODES: MessageKey[] = ['login.UNKNOWN_NAME', 'login.MISSING_CONFIG', 'login.SIGNIN_FAILED'];
+
+function loginError(error: string | null, t: (key: MessageKey) => string): string | null {
+  if (!error) return null;
+  const key = `login.${error}` as MessageKey;
+  if (LOGIN_CODES.includes(key)) return t(key);
+  return error;
 }
 
 function NameButton({

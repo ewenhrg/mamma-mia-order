@@ -1,4 +1,5 @@
 import { LoginForm } from './LoginForm';
+import { LoginTagline } from './LoginTagline';
 import { SetupNotice } from '@/components/SetupNotice';
 
 export const metadata = { title: 'Connexion — Mamma Mia' };
@@ -24,7 +25,7 @@ export default async function LoginPage({
             MM
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-ink">Mamma Mia</h1>
-          <p className="mt-1 text-sm text-muted">Prise de commande</p>
+          <LoginTagline />
         </div>
 
         {configured ? <LoginForm next={safeNext} /> : <SetupNotice />}
