@@ -25,5 +25,5 @@ export default async function TablePage({ params }: { params: Promise<{ tableId:
   const table = tableRes.data;
   if (!table) notFound();
 
-  return <OrderScreen table={table} role={staff.role} />;
+  return <OrderScreen key={table.id} table={table} role={staff.role} />;
 }

@@ -175,12 +175,11 @@ export type TableOverviewRow = {
 /**
  * Payload envoye a pos_submit_order.
  * Produit catalogue : product_id, le prix est relu en base.
- * Hors carte (staff seulement) : custom_name + custom_price_cents, sans product_id.
+ * Hors carte (staff seulement) : custom_name, sans product_id ni prix.
  */
 export type SubmitItemPayload = {
   product_id?: string | null;
   custom_name?: string;
-  custom_price_cents?: number;
   quantity: number;
   option_ids: string[];
   note: string | null;
@@ -288,6 +287,17 @@ export type Database = {
       pos_force_release: {
         Args: { p_order_id: string };
         Returns: { ok: true; duplicate: boolean; status: OrderStatus };
+      };
+      pos_move_order: {
+        Args: { p_order_id: string; p_to_table_id: string };
+        Returns: {
+          ok: true;
+          order_id: string;
+          from_table_id: string;
+          to_table_id: string;
+          from_label: string;
+          to_label: string;
+        };
       };
       pos_delete_table: { Args: { p_table_id: string }; Returns: { ok: true; deleted: boolean } };
       pos_delete_category: { Args: { p_category_id: string }; Returns: { ok: true; deleted: boolean } };

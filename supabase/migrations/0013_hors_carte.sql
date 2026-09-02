@@ -3,9 +3,9 @@
 -- A executer dans Supabase > SQL Editor, APRES 0001.
 -- Rejouable. Ne touche pas aux commandes existantes.
 --
--- Le serveur peut envoyer un article qui n'est pas au menu : nom + prix.
--- Le client QR (guest_submit_order) n'a pas ce droit : les prix hors carte
--- ne sont acceptes que via pos_submit_order, par un staff authentifie.
+-- Le serveur peut envoyer un article qui n'est pas au menu : nom seulement.
+-- Le prix n'est pas enregistre : il se regle a la caisse.
+-- Le client QR (guest_submit_order) n'a pas ce droit.
 -- =============================================================================
 
 create or replace function public.pos_submit_order(
@@ -38,7 +38,6 @@ declare
   v_result            jsonb;
   v_product_id_text   text;
   v_custom_name       text;
-  v_custom_price      integer;
 begin
   if v_staff_id is null then
     raise exception 'AUTH_REQUIRED' using errcode = '28000';
@@ -97,33 +96,22 @@ begin
     v_product_id_text := nullif(trim(coalesce(v_item ->> 'product_id', '')), '');
     v_note := nullif(trim(coalesce(v_item ->> 'note', '')), '');
 
-    -- Hors carte : pas de product_id, nom + prix saisis par le serveur.
+    -- Hors carte : pas de product_id, nom seulement. Prix = 0 (caisse).
     if v_product_id_text is null then
       v_custom_name := left(trim(coalesce(v_item ->> 'custom_name', '')), 80);
-      begin
-        v_custom_price := (v_item ->> 'custom_price_cents')::integer;
-      exception when others then
-        raise exception 'INVALID_CUSTOM' using errcode = '22023';
-      end;
       if v_custom_name is null or length(v_custom_name) < 1 then
         raise exception 'INVALID_CUSTOM' using errcode = '22023';
       end if;
-      if v_custom_price is null or v_custom_price < 0 or v_custom_price > 2000000 then
-        raise exception 'INVALID_CUSTOM' using errcode = '22023';
-      end if;
-
-      v_unit := v_custom_price;
-      v_line := v_unit * v_qty;
 
       insert into public.order_items (
         order_id, batch_id, product_id, name_snapshot, base_price_cents,
         options_snapshot, unit_price_cents, quantity, line_total_cents, note, created_by
       ) values (
-        v_order_id, v_batch_id, null, v_custom_name, v_custom_price,
+        v_order_id, v_batch_id, null, v_custom_name, 0,
         jsonb_build_array(jsonb_build_object(
           'id', 'custom', 'name', 'Hors carte', 'price_delta_cents', 0
         )),
-        v_unit, v_qty, v_line, v_note, v_staff_id
+        0, v_qty, 0, v_note, v_staff_id
       );
 
       v_inserted := v_inserted + 1;

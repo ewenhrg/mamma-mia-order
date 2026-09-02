@@ -5,7 +5,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatAmount } from '@/lib/money';
 import { formatElapsed } from '@/lib/time';
-import { cartItemCount, cartTotalCents, type CartAction, type CartLine } from '@/lib/cart';
+import { cartItemCount, cartTotalCents, isCustomLine, isCustomOrderItem, type CartAction, type CartLine } from '@/lib/cart';
 import type { OrderItemRow, OrderRow, StaffRole } from '@/lib/types';
 import { useI18n } from '@/lib/i18n';
 import { translateMenuName } from '@/lib/menuI18n';
@@ -32,6 +32,7 @@ type Props = {
   onVoidItem: (itemId: string) => void;
   onMarkPaid: () => void;
   onReleaseTable: () => void;
+  onMoveOrder?: () => void;
 };
 
 export function CartSheet({
@@ -53,6 +54,7 @@ export function CartSheet({
   onVoidItem,
   onMarkPaid,
   onReleaseTable,
+  onMoveOrder,
 }: Props) {
   const { t, locale } = useI18n();
   const [tab, setTab] = useState<'cart' | 'requested' | 'sent'>('cart');
@@ -68,11 +70,9 @@ export function CartSheet({
   useEffect(() => {
     if (!open) return;
     if (requestedItems.length > 0) setTab('requested');
-  }, [open, requestedItems.length]);
-
-  useEffect(() => {
-    if (tab === 'requested' && requestedItems.length === 0) setTab('sent');
-  }, [tab, requestedItems.length]);
+    else if (lines.length === 0 && sentItems.length > 0) setTab('sent');
+    else setTab('cart');
+  }, [open, requestedItems.length, lines.length, sentItems.length]);
 
   // Une commande deja ouverte : le serveur doit voir le total reel de la table,
   // pas seulement ce qu'il vient de saisir.
@@ -147,6 +147,18 @@ export function CartSheet({
         <TabButton active={tab === 'sent'} onClick={() => setTab('sent')} label={t('cart.tabSent')} count={sentCount} />
       </div>
 
+      {order && onMoveOrder ? (
+        <div className="px-4 pt-2">
+          <button
+            type="button"
+            onClick={onMoveOrder}
+            className="tap flex h-11 w-full items-center justify-center rounded-xl border border-dashed border-line text-sm font-bold text-ink-2 active:bg-canvas"
+          >
+            {t('cart.move')}
+          </button>
+        </div>
+      ) : null}
+
       {tab === 'cart' ? (
         <div className="p-4">
           {lines.length === 0 ? (
@@ -177,7 +189,9 @@ export function CartSheet({
                       ) : null}
                     </div>
                     <span className="shrink-0 text-[15px] font-extrabold tabular-nums text-ink">
-                      {formatAmount(line.unitPriceCents * line.quantity)}
+                      {isCustomLine(line.productId)
+                        ? t('order.customTill')
+                        : formatAmount(line.unitPriceCents * line.quantity)}
                     </span>
                   </div>
 
@@ -395,7 +409,9 @@ function RequestedItems({
                   ) : null}
                 </div>
                 <span className="shrink-0 text-[15px] font-bold tabular-nums text-ink">
-                  {formatAmount(item.line_total_cents)}
+                  {isCustomOrderItem(item.options_snapshot)
+                    ? t('order.customTill')
+                    : formatAmount(item.line_total_cents)}
                 </span>
                 <button
                   type="button"
@@ -466,7 +482,8 @@ function SentItems({
           </h3>
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
             {batch.map((item) => (
-              <li key={item.id} className="flex items-start gap-3 p-3">
+              <li key={item.id} className="p-3">
+                <div className="flex items-start gap-3">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-canvas text-sm font-extrabold tabular-nums text-ink">
                   {item.quantity}
                 </span>
@@ -491,8 +508,11 @@ function SentItems({
                   ) : null}
                 </div>
                 <span className="shrink-0 text-[15px] font-bold tabular-nums text-ink">
-                  {formatAmount(item.line_total_cents)}
+                  {isCustomOrderItem(item.options_snapshot)
+                    ? t('order.customTill')
+                    : formatAmount(item.line_total_cents)}
                 </span>
+                </div>
                 {canVoid ? (
                   <button
                     type="button"
@@ -509,11 +529,9 @@ function SentItems({
                       }
                     }}
                     aria-label={t('cart.voidAria')}
-                    className="tap -my-1 flex size-9 shrink-0 items-center justify-center rounded-lg text-alert active:bg-alert-soft"
+                    className="tap mt-2 flex h-12 w-full items-center justify-center rounded-xl border border-alert/30 text-sm font-bold text-alert active:bg-alert-soft"
                   >
-                    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-                    </svg>
+                    {t('cart.void')}
                   </button>
                 ) : null}
               </li>

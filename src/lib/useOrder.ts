@@ -27,23 +27,24 @@ export function useOrder(tableId: string): OrderState {
   const [error, setError] = useState<string | null>(null);
 
   const mounted = useRef(true);
-  const inFlight = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const orderIdRef = useRef<string | null>(null);
+  /** Invalide une reponse lente si on a change de table ou relance un fetch. */
+  const genRef = useRef(0);
 
   const refresh = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
+    const gen = ++genRef.current;
+    const forTable = tableId;
     try {
       const supabase = getSupabaseBrowser();
       const { data: orderRow, error: orderError } = await supabase
         .from('orders')
         .select('*')
-        .eq('table_id', tableId)
+        .eq('table_id', forTable)
         .eq('status', 'open')
         .maybeSingle();
 
-      if (!mounted.current) return;
+      if (!mounted.current || gen !== genRef.current) return;
       if (orderError) {
         setError(describeDbError(orderError));
         return;
@@ -64,17 +65,18 @@ export function useOrder(tableId: string): OrderState {
         .eq('order_id', orderRow.id)
         .order('created_at');
 
-      if (!mounted.current) return;
+      if (!mounted.current || gen !== genRef.current) return;
       if (itemsError) setError(describeDbError(itemsError));
       else {
         setItems(itemRows ?? []);
         setError(null);
       }
     } catch (err) {
-      if (mounted.current) setError(err instanceof Error ? err.message : 'Chargement impossible');
+      if (mounted.current && gen === genRef.current) {
+        setError(err instanceof Error ? err.message : 'Chargement impossible');
+      }
     } finally {
-      inFlight.current = false;
-      if (mounted.current) setLoading(false);
+      if (mounted.current && gen === genRef.current) setLoading(false);
     }
   }, [tableId]);
 
@@ -88,6 +90,10 @@ export function useOrder(tableId: string): OrderState {
 
   useEffect(() => {
     mounted.current = true;
+    orderIdRef.current = null;
+    setOrder(null);
+    setItems([]);
+    setError(null);
     setLoading(true);
     void refresh();
 
@@ -100,10 +106,8 @@ export function useOrder(tableId: string): OrderState {
         scheduleRefresh,
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, (payload) => {
-        // Filtre cote client : Realtime ne sait pas filtrer sur une valeur
-        // qui n'est connue qu'apres la creation de la commande.
         const row = (payload.new ?? payload.old) as { order_id?: string } | null;
-        if (!orderIdRef.current || row?.order_id === orderIdRef.current) scheduleRefresh();
+        if (orderIdRef.current && row?.order_id === orderIdRef.current) scheduleRefresh();
       })
       .subscribe();
 
@@ -115,6 +119,7 @@ export function useOrder(tableId: string): OrderState {
 
     return () => {
       mounted.current = false;
+      genRef.current += 1;
       if (timer.current) clearTimeout(timer.current);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', onVisible);

@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { CartSheet } from '@/components/pos/CartSheet';
 import { CustomItemSheet } from '@/components/pos/CustomItemSheet';
+import { MoveOrderSheet } from '@/components/pos/MoveOrderSheet';
 import { OutboxBanner } from '@/components/pos/OutboxBanner';
 import { ProductCard } from '@/components/pos/ProductCard';
 import { ProductOptionsSheet, type OptionsDraft } from '@/components/pos/ProductOptionsSheet';
@@ -26,6 +27,7 @@ import {
   isCustomLine,
   makeCustomLine,
   makeLine,
+  relocateCart,
   type CartLine,
   type CartState,
 } from '@/lib/cart';
@@ -40,7 +42,7 @@ import { describeAdminError } from '@/lib/adminErrors';
 import { useOrder } from '@/lib/useOrder';
 import { useI18n } from '@/lib/i18n';
 import { plural } from '@/lib/messages';
-import type { MenuProduct, RestaurantTableRow, StaffRole } from '@/lib/types';
+import type { MenuProduct, RestaurantTableRow, StaffRole, TableOverviewRow } from '@/lib/types';
 
 type Props = {
   table: RestaurantTableRow;
@@ -76,8 +78,24 @@ export function OrderScreen({ table, role }: Props) {
     return { tableId, lines: [], note: '' };
   });
 
-  // Sauvegarde a chaque changement : fermer l'app ne perd jamais la saisie.
+  // Si l'ecran est reutilise d'une table a l'autre (meme page Next), on
+  // recharge le panier de la table affichee au lieu de garder l'ancien.
   useEffect(() => {
+    if (cart.tableId === table.id) return;
+    const saved = readJSON<CartState | null>(STORAGE_KEYS.cart(table.id), null);
+    dispatch({
+      type: 'replace',
+      state:
+        saved && Array.isArray(saved.lines)
+          ? { tableId: table.id, lines: saved.lines, note: saved.note ?? '' }
+          : { tableId: table.id, lines: [], note: '' },
+    });
+  }, [table.id, cart.tableId]);
+
+  // Sauvegarde a chaque changement : fermer l'app ne perd jamais la saisie.
+  // Ne jamais ecrire le panier d'une table dans la cle d'une autre.
+  useEffect(() => {
+    if (cart.tableId !== table.id) return;
     if (cart.lines.length === 0 && cart.note === '') removeKey(STORAGE_KEYS.cart(table.id));
     else writeJSON(STORAGE_KEYS.cart(table.id), cart);
   }, [cart, table.id]);
@@ -111,6 +129,8 @@ export function OrderScreen({ table, role }: Props) {
   const [editing, setEditing] = useState<{ line: CartLine; draft: OptionsDraft } | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
   const [customEditing, setCustomEditing] = useState<CartLine | null>(null);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [toast, setToast] = useState<{ kind: 'ok' | 'info'; text: string } | null>(null);
   const submitLock = useRef(false);
   const [submitting, setSubmitting] = useState(false);
@@ -220,9 +240,9 @@ export function OrderScreen({ table, role }: Props) {
   );
 
   const confirmCustom = useCallback(
-    (name: string, priceCents: number, quantity: number, note: string | null) => {
+    (name: string) => {
       if (customEditing) dispatch({ type: 'remove', key: customEditing.key });
-      dispatch({ type: 'add', line: makeCustomLine(name, priceCents, quantity, note) });
+      dispatch({ type: 'add', line: makeCustomLine(name, customEditing?.quantity ?? 1) });
       setCustomOpen(false);
       setCustomEditing(null);
     },
@@ -237,6 +257,7 @@ export function OrderScreen({ table, role }: Props) {
    */
   const submit = useCallback(() => {
     if (submitLock.current) return;
+    if (cart.tableId !== table.id) return;
     if (cart.lines.length === 0) return;
 
     submitLock.current = true;
@@ -253,7 +274,6 @@ export function OrderScreen({ table, role }: Props) {
                 option_ids: [],
                 note: line.note,
                 custom_name: line.name,
-                custom_price_cents: line.unitPriceCents,
               }
             : {
                 product_id: line.productId,
@@ -276,7 +296,7 @@ export function OrderScreen({ table, role }: Props) {
         submitLock.current = false;
       }, 800);
     }
-  }, [cart.lines, cart.note, draftCount, draftTotal, table.id, table.label, showToast, t]);
+  }, [cart.lines, cart.note, cart.tableId, draftCount, draftTotal, table.id, table.label, showToast, t]);
 
   const voidItem = useCallback(
     async (itemId: string) => {
@@ -345,6 +365,38 @@ export function OrderScreen({ table, role }: Props) {
     setCartOpen(false);
     router.push('/');
   }, [order, table.label, router, showToast, t]);
+
+  const moveOrder = useCallback(
+    async (dest: TableOverviewRow) => {
+      if (!order || moving) return;
+      if (
+        !window.confirm(
+          t('cart.moveConfirm', { n: order.order_number, from: table.label, to: dest.label }),
+        )
+      ) {
+        return;
+      }
+
+      setMoving(true);
+      const { error } = await getSupabaseBrowser().rpc('pos_move_order', {
+        p_order_id: order.id,
+        p_to_table_id: dest.id,
+      });
+      setMoving(false);
+      if (error) {
+        showToast('info', describeAdminError(error.message));
+        return;
+      }
+
+      relocateCart(table.id, dest.id, cart);
+      dispatch({ type: 'clear' });
+      setMoveOpen(false);
+      setCartOpen(false);
+      showToast('ok', t('cart.movedToast', { label: dest.label }));
+      router.push(`/table/${dest.id}`);
+    },
+    [order, moving, table.id, table.label, cart, router, showToast, t],
+  );
 
   // ------------------------------------------------------------------ vue --
   const headerStatus = useMemo(() => {
@@ -602,6 +654,14 @@ export function OrderScreen({ table, role }: Props) {
         onVoidItem={voidItem}
         onMarkPaid={markPaid}
         onReleaseTable={releaseTable}
+        onMoveOrder={
+          role === 'admin' && order
+            ? () => {
+                setCartOpen(false);
+                setMoveOpen(true);
+              }
+            : undefined
+        }
       />
 
       <ProductOptionsSheet
@@ -623,6 +683,18 @@ export function OrderScreen({ table, role }: Props) {
         }}
         onConfirm={confirmCustom}
       />
+
+      {order ? (
+        <MoveOrderSheet
+          open={moveOpen}
+          fromTableId={table.id}
+          fromLabel={table.label}
+          orderNumber={order.order_number}
+          pending={moving}
+          onClose={() => setMoveOpen(false)}
+          onPick={(dest) => void moveOrder(dest)}
+        />
+      ) : null}
     </div>
   );
 }

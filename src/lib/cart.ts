@@ -1,3 +1,4 @@
+import { STORAGE_KEYS, readJSON, removeKey, writeJSON } from '@/lib/storage';
 import type { MenuProduct } from '@/lib/types';
 
 export type CartLine = {
@@ -24,31 +25,29 @@ export const MAX_CART_LINES = 200;
 export const CUSTOM_PREFIX = 'custom:';
 export const CUSTOM_LABEL = 'Hors carte';
 export const MAX_CUSTOM_NAME = 80;
-/** 20 000 EGP — plafond serveur, pas un prix de menu. */
-export const MAX_CUSTOM_PRICE_CENTS = 2_000_000;
 
 export function isCustomLine(productId: string): boolean {
   return productId.startsWith(CUSTOM_PREFIX);
 }
 
-export function makeCustomLine(
-  name: string,
-  priceCents: number,
-  quantity: number,
-  note: string | null,
-): CartLine {
+/** Ligne deja envoyee : snapshot « Hors carte », prix toujours 0 (caisse). */
+export function isCustomOrderItem(options: { id?: string; name: string }[]): boolean {
+  return options.some((o) => o.id === 'custom' || o.name === CUSTOM_LABEL);
+}
+
+export function makeCustomLine(name: string, quantity = 1): CartLine {
   const trimmed = name.trim().slice(0, MAX_CUSTOM_NAME);
-  const id = `${CUSTOM_PREFIX}${trimmed}|${priceCents}`;
+  const id = `${CUSTOM_PREFIX}${trimmed}`;
   return {
-    key: lineKey(id, [], note),
+    key: lineKey(id, [], null),
     productId: id,
     name: trimmed,
-    basePriceCents: priceCents,
-    unitPriceCents: priceCents,
+    basePriceCents: 0,
+    unitPriceCents: 0,
     quantity,
     optionIds: [],
     optionLabels: [CUSTOM_LABEL],
-    note,
+    note: null,
   };
 }
 
@@ -176,8 +175,8 @@ export function cartItemCount(lines: CartLine[]): number {
 
 /**
  * Total indicatif affiche au serveur. Le montant qui fait foi est celui
- * recalcule par la base lors de l'envoi (pos_submit_order), sauf hors carte
- * ou le prix saisi par le serveur est enregistre tel quel.
+ * recalcule par la base lors de l'envoi (pos_submit_order). Les hors-carte
+ * sont a 0 : le prix se regle a la caisse.
  */
 export function cartTotalCents(lines: CartLine[]): number {
   let total = 0;
@@ -190,4 +189,27 @@ export function quantityForProduct(lines: CartLine[], productId: string): number
   let total = 0;
   for (const line of lines) if (line.productId === productId) total += line.quantity;
   return total;
+}
+
+/** Deplace le panier local avec la commande, si le telephone suit les clients. */
+export function relocateCart(fromTableId: string, toTableId: string, current: CartState): void {
+  if (fromTableId === toTableId) return;
+
+  const destSaved = readJSON<CartState | null>(STORAGE_KEYS.cart(toTableId), null);
+  let next: CartState =
+    destSaved && Array.isArray(destSaved.lines)
+      ? { tableId: toTableId, lines: destSaved.lines, note: destSaved.note ?? '' }
+      : { tableId: toTableId, lines: [], note: '' };
+
+  for (const line of current.lines) {
+    next = cartReducer(next, { type: 'add', line });
+  }
+  if (current.note.trim()) {
+    const note = next.note.trim() ? `${next.note.trim()}\n${current.note.trim()}` : current.note;
+    next = { ...next, note };
+  }
+
+  if (next.lines.length === 0 && next.note === '') removeKey(STORAGE_KEYS.cart(toTableId));
+  else writeJSON(STORAGE_KEYS.cart(toTableId), next);
+  removeKey(STORAGE_KEYS.cart(fromTableId));
 }
