@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useI18n } from '@/lib/i18n';
 
-export function AdminNav() {
+export function AdminNav({ showStats = false }: { showStats?: boolean }) {
   const pathname = usePathname();
   const { t } = useI18n();
   const links = [
+    ...(showStats ? [{ href: '/admin/stats', label: t('admin.nav.stats') }] : []),
     { href: '/admin/menu', label: t('admin.nav.menu') },
     { href: '/admin/tables', label: t('admin.nav.tables') },
     { href: '/admin/staff', label: t('admin.nav.staff') },

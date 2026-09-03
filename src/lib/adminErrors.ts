@@ -43,6 +43,7 @@ export function describeDbError(error: unknown): string {
   if (message.includes('ADMIN_REQUIRED')) return t('err.adminRequired');
   if (message.includes('TABLE_OCCUPIED')) return t('err.tableOccupied');
   if (message.includes('SAME_TABLE')) return t('err.sameTable');
+  if (message.includes('OWNER_REQUIRED')) return t('err.ownerRequired');
 
   if (code === 'PGRST205' || code === 'PGRST204' || /schema cache/i.test(message)) {
     return t('err.schemaCache');

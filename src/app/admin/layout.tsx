@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getStaffSession } from '@/lib/supabase/server';
+import { isOwnerName } from '@/lib/roster';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { AdminNav } from '@/components/admin/AdminNav';
 
@@ -14,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="flex min-h-[100dvh] flex-col bg-canvas">
       <header className="pt-safe sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
         <AdminHeader fullName={staff.fullName} />
-        <AdminNav />
+        <AdminNav showStats={isOwnerName(staff.fullName)} />
       </header>
 
       <main className="pb-safe flex-1 px-3 py-4">{children}</main>

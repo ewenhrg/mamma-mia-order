@@ -43,6 +43,11 @@ export function findRosterEntry(slug: string): RosterEntry | undefined {
   return ROSTER.find((entry) => entry.slug === slug);
 }
 
+/** Page stats et RPC associees : uniquement le compte Ewen. */
+export function isOwnerName(fullName: string): boolean {
+  return nameToSlug(fullName) === 'ewen';
+}
+
 export function buildLoginList(staffNames: string[]): LoginPerson[] {
   const seen = new Set(ROSTER.map((entry) => entry.slug));
   const extra: LoginPerson[] = [];

@@ -197,6 +197,33 @@ export type SubmitOrderResult = {
   total_cents: number;
 };
 
+export type OwnerStatsRow = {
+  name?: string;
+  label?: string;
+  total_cents: number;
+  item_count: number;
+};
+
+export type OwnerStats = {
+  ok: true;
+  from: string;
+  to: string;
+  total_cents: number;
+  item_count: number;
+  order_count: number;
+  tables: OwnerStatsRow[];
+  categories: OwnerStatsRow[];
+};
+
+/** Total du soir, limite aux tables que le staff connecte a le droit de voir. */
+export type FloorStats = {
+  ok: true;
+  from: string;
+  to: string;
+  total_cents: number;
+  zones: { zone_id: string; total_cents: number }[];
+};
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -298,6 +325,14 @@ export type Database = {
           from_label: string;
           to_label: string;
         };
+      };
+      pos_owner_stats: {
+        Args: Record<string, never>;
+        Returns: OwnerStats;
+      };
+      pos_floor_stats: {
+        Args: Record<string, never>;
+        Returns: FloorStats;
       };
       pos_delete_table: { Args: { p_table_id: string }; Returns: { ok: true; deleted: boolean } };
       pos_delete_category: { Args: { p_category_id: string }; Returns: { ok: true; deleted: boolean } };

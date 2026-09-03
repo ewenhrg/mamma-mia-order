@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { StaffSession } from '@/lib/supabase/server';
+import { isOwnerName } from '@/lib/roster';
 import { useTables } from '@/lib/useTables';
 import { useDrafts } from '@/lib/drafts';
 import { formatAmount } from '@/lib/money';
@@ -19,7 +20,7 @@ import { sortByTableLabel, sortFloorTables } from '@/lib/tableSort';
 
 export function TablesScreen({ staff }: { staff: StaffSession }) {
   const { t, locale } = useI18n();
-  const { tables, loading, error, live, refresh } = useTables();
+  const { tables, floorStats, loading, error, live, refresh } = useTables();
   const drafts = useDrafts();
   const [zoneId, setZoneId] = useState<string | 'ALL'>('ALL');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -44,17 +45,23 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
 
   const stats = useMemo(() => {
     let open = 0;
-    let revenue = 0;
     let requested = 0;
-    for (const row of tables) {
+    let openTotal = 0;
+    for (const row of visible) {
       if (row.order_id) {
         open += 1;
-        revenue += row.order_total_cents ?? 0;
+        openTotal += row.order_total_cents ?? 0;
       }
       requested += row.requested_count ?? 0;
     }
-    return { open, free: tables.length - open, revenue, requested };
-  }, [tables]);
+    const tonight =
+      floorStats == null
+        ? openTotal
+        : zoneId === 'ALL'
+          ? floorStats.total_cents
+          : (floorStats.zones.find((z) => z.zone_id === zoneId)?.total_cents ?? 0);
+    return { open, free: visible.length - open, requested, tonight };
+  }, [visible, floorStats, zoneId]);
 
   const roleKey: MessageKey =
     staff.role === 'admin'
@@ -71,13 +78,12 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
             MM
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-bold leading-tight text-ink">{t('salle.title')}</h1>
+            <h1 className="truncate text-lg font-extrabold leading-tight tabular-nums text-ink">
+              {formatAmount(stats.tonight)}
+              <span className="ms-1.5 text-sm font-bold text-muted">EGP</span>
+            </h1>
             <p className="truncate text-xs text-muted">
-              {t('salle.stats', {
-                free: stats.free,
-                open: stats.open,
-                revenue: formatAmount(stats.revenue),
-              })}
+              {t('salle.stats', { free: stats.free, open: stats.open })}
               {stats.requested > 0 ? t('salle.statsRequested', { n: stats.requested }) : ''}
             </p>
           </div>
@@ -165,6 +171,9 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
           <LanguageSwitcher />
           {staff.role !== 'server' ? (
             <>
+              {isOwnerName(staff.fullName) ? (
+                <MenuLink href="/admin/stats" label={t('salle.adminStats')} />
+              ) : null}
               <MenuLink href="/admin/menu" label={t('salle.adminMenu')} />
               <MenuLink href="/admin/tables" label={t('salle.adminTables')} />
               <MenuLink href="/admin/staff" label={t('salle.adminStaff')} />

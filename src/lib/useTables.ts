@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { describeDbError } from '@/lib/adminErrors';
 import { sortFloorTables } from '@/lib/tableSort';
-import type { TableOverviewRow } from '@/lib/types';
+import type { FloorStats, TableOverviewRow } from '@/lib/types';
 
 /**
  * Etat de la salle, tenu a jour pour tous les serveurs a la fois.
@@ -15,6 +15,7 @@ import type { TableOverviewRow } from '@/lib/types';
  */
 export function useTables() {
   const [tables, setTables] = useState<TableOverviewRow[]>([]);
+  const [floorStats, setFloorStats] = useState<FloorStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(false);
@@ -28,17 +29,21 @@ export function useTables() {
     inFlight.current = true;
     try {
       const supabase = getSupabaseBrowser();
-      const { data, error: queryError } = await supabase
-        .from('table_overview')
-        .select('*')
-        .order('sort_order');
+      const [overview, stats] = await Promise.all([
+        supabase.from('table_overview').select('*').order('sort_order'),
+        supabase.rpc('pos_floor_stats'),
+      ]);
 
       if (!mounted.current) return;
-      if (queryError) {
-        setError(describeDbError(queryError));
+      if (overview.error) {
+        setError(describeDbError(overview.error));
       } else {
-        setTables(sortFloorTables(data ?? []));
+        setTables(sortFloorTables(overview.data ?? []));
         setError(null);
+      }
+      if (!stats.error && stats.data) {
+        const next = stats.data as FloorStats;
+        setFloorStats({ ...next, zones: next.zones ?? [] });
       }
     } catch (err) {
       if (mounted.current) setError(err instanceof Error ? err.message : 'Chargement impossible');
@@ -93,5 +98,5 @@ export function useTables() {
     };
   }, [refresh, scheduleRefresh]);
 
-  return { tables, loading, error, live, refresh };
+  return { tables, floorStats, loading, error, live, refresh };
 }
