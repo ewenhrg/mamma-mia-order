@@ -334,6 +334,10 @@ export type Database = {
         Args: Record<string, never>;
         Returns: FloorStats;
       };
+      pos_reset_day_stats: {
+        Args: Record<string, never>;
+        Returns: { ok: true; reset_at: string };
+      };
       pos_delete_table: { Args: { p_table_id: string }; Returns: { ok: true; deleted: boolean } };
       pos_delete_category: { Args: { p_category_id: string }; Returns: { ok: true; deleted: boolean } };
       pos_delete_product: { Args: { p_product_id: string }; Returns: { ok: true; deleted: boolean } };

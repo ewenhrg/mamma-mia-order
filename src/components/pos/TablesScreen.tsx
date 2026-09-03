@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { StaffSession } from '@/lib/supabase/server';
+import { describeDbError } from '@/lib/adminErrors';
 import { isOwnerName } from '@/lib/roster';
 import { useTables } from '@/lib/useTables';
 import { useDrafts } from '@/lib/drafts';
 import { formatAmount } from '@/lib/money';
 import { warmMenu } from '@/lib/menu';
+import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { TableCard } from '@/components/pos/TableCard';
 import { OutboxBanner } from '@/components/pos/OutboxBanner';
 import { SignOutButton } from '@/components/SignOutButton';
@@ -24,6 +26,8 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
   const drafts = useDrafts();
   const [zoneId, setZoneId] = useState<string | 'ALL'>('ALL');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const isOwner = isOwnerName(staff.fullName);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -70,6 +74,20 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
         ? 'salle.role.manager'
         : 'salle.role.server';
 
+  async function resetDayTotal() {
+    if (resetting) return;
+    if (!window.confirm(t('stats.resetConfirm'))) return;
+    setMenuOpen(false);
+    setResetting(true);
+    const { error: rpcError } = await getSupabaseBrowser().rpc('pos_reset_day_stats');
+    setResetting(false);
+    if (rpcError) {
+      window.alert(describeDbError(rpcError));
+      return;
+    }
+    await refresh();
+  }
+
   return (
     <div className="flex min-h-[100dvh] flex-col bg-canvas">
       <header className="pt-safe sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
@@ -87,6 +105,25 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
               {stats.requested > 0 ? t('salle.statsRequested', { n: stats.requested }) : ''}
             </p>
           </div>
+          {isOwner ? (
+            <button
+              type="button"
+              disabled={resetting}
+              aria-label={t('stats.reset')}
+              onClick={() => void resetDayTotal()}
+              className="tap flex size-11 shrink-0 items-center justify-center rounded-xl border border-line text-ink-2 active:bg-canvas disabled:opacity-50"
+            >
+              {resetting ? (
+                <Spinner className="size-5" />
+              ) : (
+                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M4 4v6h6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M20 20v-6h-6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M20.5 9A8 8 0 0 0 7 6.3L4 10M3.5 15A8 8 0 0 0 17 17.7L20 14" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+          ) : null}
           <span
             className={`size-2 shrink-0 rounded-full ${live ? 'bg-free' : 'bg-line'}`}
             title={live ? t('salle.live') : t('salle.offline')}
@@ -171,13 +208,21 @@ export function TablesScreen({ staff }: { staff: StaffSession }) {
           <LanguageSwitcher />
           {staff.role !== 'server' ? (
             <>
-              {isOwnerName(staff.fullName) ? (
-                <MenuLink href="/admin/stats" label={t('salle.adminStats')} />
-              ) : null}
+              {isOwner ? <MenuLink href="/admin/stats" label={t('salle.adminStats')} /> : null}
               <MenuLink href="/admin/menu" label={t('salle.adminMenu')} />
               <MenuLink href="/admin/tables" label={t('salle.adminTables')} />
               <MenuLink href="/admin/staff" label={t('salle.adminStaff')} />
             </>
+          ) : null}
+          {isOwner ? (
+            <button
+              type="button"
+              disabled={resetting}
+              onClick={() => void resetDayTotal()}
+              className="tap flex h-14 w-full items-center rounded-2xl border border-line bg-surface px-4 font-semibold text-ink active:bg-canvas disabled:opacity-50"
+            >
+              {t('stats.reset')}
+            </button>
           ) : null}
           <button
             type="button"

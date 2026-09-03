@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ErrorNote } from '@/components/admin/ui';
+import { ErrorNote, GhostButton } from '@/components/admin/ui';
 import { Spinner } from '@/components/ui/Spinner';
 import { describeDbError } from '@/lib/adminErrors';
 import { useI18n } from '@/lib/i18n';
@@ -16,6 +16,7 @@ export function StatsAdmin() {
   const [stats, setStats] = useState<OwnerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   const reload = useCallback(async () => {
     setError(null);
@@ -37,6 +38,20 @@ export function StatsAdmin() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  async function resetDayTotal() {
+    if (resetting) return;
+    if (!window.confirm(t('stats.resetConfirm'))) return;
+    setResetting(true);
+    const { error: rpcError } = await getSupabaseBrowser().rpc('pos_reset_day_stats');
+    if (rpcError) {
+      setError(describeDbError(rpcError));
+      setResetting(false);
+      return;
+    }
+    await reload();
+    setResetting(false);
+  }
 
   if (loading && !stats) {
     return (
@@ -87,6 +102,16 @@ export function StatsAdmin() {
           {t(plural(stats.item_count, 'stats.items', 'stats.items_other'), { n: stats.item_count })}
         </p>
       </div>
+
+      <GhostButton
+        type="button"
+        disabled={resetting}
+        className="gap-2"
+        onClick={() => void resetDayTotal()}
+      >
+        {resetting ? <Spinner className="size-5" /> : null}
+        {t('stats.reset')}
+      </GhostButton>
 
       <section>
         <h2 className="mb-2 text-sm font-extrabold text-ink">{t('stats.byCategory')}</h2>

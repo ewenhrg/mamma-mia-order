@@ -238,6 +238,8 @@ const fr = {
   'stats.orders_other': '{n} commandes',
   'stats.items': '{n} article',
   'stats.items_other': '{n} articles',
+  'stats.reset': 'Remettre a zero',
+  'stats.resetConfirm': 'Remettre tous les totaux du soir a 0 ? Les commandes et les tables restent.',
 
   'admin.qrCodes': 'QR codes clients',
   'admin.addTable': '+ Une table',
@@ -566,6 +568,8 @@ const en: Record<MessageKey, string> = {
   'stats.orders_other': '{n} orders',
   'stats.items': '{n} item',
   'stats.items_other': '{n} items',
+  'stats.reset': 'Reset to zero',
+  'stats.resetConfirm': 'Set tonight’s totals back to 0? Orders and tables stay as they are.',
 
   'admin.qrCodes': 'Guest QR codes',
   'admin.addTable': '+ Add table',
@@ -891,6 +895,8 @@ const ar: Record<MessageKey, string> = {
   'stats.orders_other': '{n} طلبات',
   'stats.items': '{n} صنف',
   'stats.items_other': '{n} أصناف',
+  'stats.reset': 'إعادة إلى صفر',
+  'stats.resetConfirm': 'إعادة كل مجاميع الليلة إلى 0؟ الطلبات والطاولات تبقى كما هي.',
 
   'admin.qrCodes': 'رموز QR للعملاء',
   'admin.addTable': '+ طاولة',
