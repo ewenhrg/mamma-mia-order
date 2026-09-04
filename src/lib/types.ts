@@ -211,6 +211,7 @@ export type OwnerStats = {
   total_cents: number;
   item_count: number;
   order_count: number;
+  zones: OwnerStatsRow[];
   tables: OwnerStatsRow[];
   categories: OwnerStatsRow[];
 };

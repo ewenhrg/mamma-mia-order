@@ -28,6 +28,7 @@ export function StatsAdmin() {
       const next = data as OwnerStats;
       setStats({
         ...next,
+        zones: next.zones ?? [],
         tables: next.tables ?? [],
         categories: next.categories ?? [],
       });
@@ -112,6 +113,11 @@ export function StatsAdmin() {
         {resetting ? <Spinner className="size-5" /> : null}
         {t('stats.reset')}
       </GhostButton>
+
+      <section>
+        <h2 className="mb-2 text-sm font-extrabold text-ink">{t('stats.byZone')}</h2>
+        <Breakdown rows={stats.zones} total={stats.total_cents} locale={locale} empty={t('stats.empty')} />
+      </section>
 
       <section>
         <h2 className="mb-2 text-sm font-extrabold text-ink">{t('stats.byCategory')}</h2>

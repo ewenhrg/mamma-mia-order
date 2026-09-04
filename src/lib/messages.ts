@@ -231,7 +231,8 @@ const fr = {
   'admin.print': 'Imprimer',
 
   'stats.today': 'Aujourd’hui',
-  'stats.byCategory': 'Par categorie',
+  'stats.byZone': 'Par categorie de table',
+  'stats.byCategory': 'Par categorie de menu',
   'stats.byTable': 'Par table',
   'stats.empty': 'Aucune commande envoyee aujourd’hui.',
   'stats.orders': '{n} commande',
@@ -561,7 +562,8 @@ const en: Record<MessageKey, string> = {
   'admin.print': 'Print',
 
   'stats.today': 'Today',
-  'stats.byCategory': 'By category',
+  'stats.byZone': 'By table section',
+  'stats.byCategory': 'By menu category',
   'stats.byTable': 'By table',
   'stats.empty': 'No items sent today.',
   'stats.orders': '{n} order',
@@ -888,7 +890,8 @@ const ar: Record<MessageKey, string> = {
   'admin.print': 'طباعة',
 
   'stats.today': 'اليوم',
-  'stats.byCategory': 'حسب القسم',
+  'stats.byZone': 'حسب فئة الطاولات',
+  'stats.byCategory': 'حسب قسم المنيو',
   'stats.byTable': 'حسب الطاولة',
   'stats.empty': 'لم يُرسل أي طلب اليوم.',
   'stats.orders': '{n} طلب',
