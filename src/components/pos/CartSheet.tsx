@@ -284,12 +284,8 @@ export function CartSheet({
 }
 
 /**
- * Encaisser et liberer sont deux gestes separes.
- *
- * Encaisser marque le paiement mais laisse la table occupee : le client peut
- * toujours recommander. Ce n'est qu'en tapant « Liberer » que la table
- * redevient disponible — et si des articles ont ete ajoutes apres le
- * paiement, il faut d'abord encaisser le complement.
+ * Encaisser libere la table. « Liberer » ne reste que pour une addition
+ * deja encaissee qui n'aurait pas encore ete fermee.
  */
 function PaymentActions({
   order,

@@ -326,10 +326,7 @@ export function OrderScreen({ table, role }: Props) {
     showToast('ok', t('order.acceptedToast', { n: count }));
   }, [order, accepting, requestedItems, refreshOrder, showToast, t]);
 
-  /**
-   * Encaisser ne libere pas la table : le paiement est enregistre, la
-   * commande reste ouverte et le client peut continuer a commander.
-   */
+  /** Encaisser enregistre le paiement et libere la table dans la foulee. */
   const markPaid = useCallback(async () => {
     if (!order) return;
     const due = Math.max(order.total_cents - order.paid_amount_cents, 0);
@@ -338,7 +335,8 @@ export function OrderScreen({ table, role }: Props) {
       return;
     }
 
-    const { error } = await getSupabaseBrowser().rpc('pos_mark_paid', {
+    const supabase = getSupabaseBrowser();
+    const { error } = await supabase.rpc('pos_mark_paid', {
       p_order_id: order.id,
       p_discount_cents: 0,
     });
@@ -346,11 +344,21 @@ export function OrderScreen({ table, role }: Props) {
       showToast('info', describeAdminError(error.message));
       return;
     }
-    await refreshOrder();
-    showToast('ok', t('order.paidToast', { label: table.label }));
-  }, [order, table.label, refreshOrder, showToast, t]);
 
-  /** Geste distinct et explicite : c'est lui seul qui rend la table libre. */
+    const { error: releaseError } = await supabase.rpc('pos_release_table', {
+      p_order_id: order.id,
+    });
+    if (releaseError) {
+      showToast('info', describeAdminError(releaseError.message));
+      await refreshOrder();
+      return;
+    }
+
+    setCartOpen(false);
+    router.push('/');
+  }, [order, table.label, refreshOrder, router, showToast, t]);
+
+  /** Filet si une table est deja encaissee mais pas encore liberee. */
   const releaseTable = useCallback(async () => {
     if (!order) return;
     if (!window.confirm(t('order.confirmRelease', { label: table.label }))) return;
