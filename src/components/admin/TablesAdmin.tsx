@@ -734,7 +734,7 @@ function QrSheet({ table, onClose }: { table: RestaurantTableRow | null; onClose
 
   const token = table.guest_token;
   const url = token ? guestOrderUrl(token) : '';
-  const qr = token ? guestQrImageUrl(url, 320) : '';
+  const qr = token ? guestQrImageUrl(url, 640) : '';
 
   async function copyLink() {
     if (!url) return;
@@ -767,7 +767,7 @@ function QrSheet({ table, onClose }: { table: RestaurantTableRow | null; onClose
       <div className="space-y-4 p-4 text-center">
         {token ? (
           <>
-            <img src={qr} alt={`QR table ${table.label}`} className="mx-auto size-56 rounded-2xl bg-white p-2" />
+            <img src={qr} alt={`QR table ${table.label}`} className="mx-auto w-full max-w-sm rounded-2xl bg-white p-2" />
             <p className="break-all text-xs text-muted">{url}</p>
           </>
         ) : (

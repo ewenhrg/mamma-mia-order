@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { getStaffSession, getSupabaseServer } from '@/lib/supabase/server';
-import { guestOrderUrl, guestQrImageUrl } from '@/lib/guest';
+import { guestOrderUrl } from '@/lib/guest';
 import { PrintButton } from '@/components/admin/PrintButton';
+import { QrPrintGrid } from '@/components/admin/QrPrintGrid';
 import { QrStaffCopy } from '@/components/admin/QrStaffCopy';
 import { sortByTableLabel } from '@/lib/tableSort';
 
@@ -38,26 +39,13 @@ export default async function PrintQrPage() {
       {printable.length === 0 ? (
         <QrStaffCopy empty />
       ) : (
-        <ul className="grid grid-cols-2 gap-4 p-4 md:grid-cols-3 print:grid-cols-3 print:gap-6">
-          {printable.map((table) => {
-            const url = guestOrderUrl(table.guest_token!, origin);
-            return (
-              <li
-                key={table.guest_token}
-                className="break-inside-avoid rounded-2xl border border-line bg-white p-3 text-center"
-              >
-                <p className="text-xs font-bold uppercase tracking-wide text-muted">Mamma Mia</p>
-                <p className="mt-1 text-2xl font-extrabold">Table {table.label}</p>
-                <img
-                  src={guestQrImageUrl(url, 240)}
-                  alt={`QR table ${table.label}`}
-                  className="mx-auto mt-2 size-40"
-                />
-                <p className="mt-2 text-[11px] font-semibold text-ink-2">Scanne pour commander</p>
-              </li>
-            );
-          })}
-        </ul>
+        <QrPrintGrid
+          cards={printable.map((table) => ({
+            token: table.guest_token!,
+            label: table.label,
+            url: guestOrderUrl(table.guest_token!, origin),
+          }))}
+        />
       )}
     </div>
   );
