@@ -17,6 +17,7 @@ export function StatsAdmin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [tab, setTab] = useState<'salle' | 'staff'>('salle');
 
   const reload = useCallback(async () => {
     setError(null);
@@ -31,6 +32,7 @@ export function StatsAdmin() {
         zones: next.zones ?? [],
         tables: next.tables ?? [],
         categories: next.categories ?? [],
+        staff: next.staff ?? [],
       });
     }
     setLoading(false);
@@ -114,26 +116,49 @@ export function StatsAdmin() {
         {t('stats.reset')}
       </GhostButton>
 
-      <section>
-        <h2 className="mb-2 text-sm font-extrabold text-ink">{t('stats.byZone')}</h2>
-        <Breakdown rows={stats.zones} total={stats.total_cents} locale={locale} empty={t('stats.empty')} />
-      </section>
+      <div className="grid grid-cols-2 gap-2">
+        <TabButton active={tab === 'salle'} onClick={() => setTab('salle')} label={t('stats.tabSalle')} />
+        <TabButton active={tab === 'staff'} onClick={() => setTab('staff')} label={t('stats.tabStaff')} />
+      </div>
 
-      <section>
-        <h2 className="mb-2 text-sm font-extrabold text-ink">{t('stats.byCategory')}</h2>
-        <Breakdown
-          rows={stats.categories}
-          total={stats.total_cents}
-          locale={locale}
-          empty={t('stats.empty')}
-          translate
-        />
-      </section>
+      {tab === 'salle' ? (
+        <>
+          <section>
+            <h2 className="mb-2 text-sm font-extrabold text-ink">{t('stats.byZone')}</h2>
+            <Breakdown rows={stats.zones} total={stats.total_cents} locale={locale} empty={t('stats.empty')} />
+          </section>
 
-      <section>
-        <h2 className="mb-2 text-sm font-extrabold text-ink">{t('stats.byTable')}</h2>
-        <Breakdown rows={stats.tables} total={stats.total_cents} locale={locale} empty={t('stats.empty')} />
-      </section>
+          <section>
+            <h2 className="mb-2 text-sm font-extrabold text-ink">{t('stats.byCategory')}</h2>
+            <Breakdown
+              rows={stats.categories}
+              total={stats.total_cents}
+              locale={locale}
+              empty={t('stats.empty')}
+              translate
+            />
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-extrabold text-ink">{t('stats.byTable')}</h2>
+            <Breakdown rows={stats.tables} total={stats.total_cents} locale={locale} empty={t('stats.empty')} />
+          </section>
+        </>
+      ) : (
+        <section>
+          <h2 className="mb-1 text-sm font-extrabold text-ink">{t('stats.byStaff')}</h2>
+          <p className="mb-2 text-xs leading-relaxed text-muted">{t('stats.staffHint')}</p>
+          <Breakdown
+            rows={stats.staff.map((row) => ({
+              ...row,
+              name: row.name === '__guest__' ? t('stats.guest') : row.name,
+            }))}
+            total={stats.total_cents}
+            locale={locale}
+            empty={t('stats.empty')}
+          />
+        </section>
+      )}
     </div>
   );
 }
@@ -183,5 +208,19 @@ function Breakdown({
         );
       })}
     </ul>
+  );
+}
+
+function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`tap h-12 rounded-2xl text-sm font-bold ${
+        active ? 'bg-ink text-white' : 'border border-line bg-surface text-ink-2'
+      }`}
+    >
+      {label}
+    </button>
   );
 }

@@ -214,6 +214,7 @@ export type OwnerStats = {
   zones: OwnerStatsRow[];
   tables: OwnerStatsRow[];
   categories: OwnerStatsRow[];
+  staff: OwnerStatsRow[];
 };
 
 /** Total du soir, limite aux tables que le staff connecte a le droit de voir. */
